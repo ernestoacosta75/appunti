@@ -1,5 +1,15 @@
-# HIBERNATE
+# ORM Tools in Java
+ORM stands for **Object Relation Mapping**. It is a middleware application or tool that sits between the web application and database. It wraps the implementation specific details of storage drivers in an API.
 
+# What is ORM?
+ORM is a technique for converting data between Java objects and relational databases (table). In simple words, we can say that the **ORM implements responsibility of mapping the object to relational model and vice-versa**. the ORM tool does mapping in such a way that model class becomes a table in the database and each instance becomes a row of the table.
+
+The Java Persistence API (JPA) **is a specification of Java**. It is used to persist data between Java object and relational database. JPA acts as a bridge between object-oriented domain models and relational database systems.
+
+As JPA is just a specification, **it doesn't perform any operation by itself. It requires an implementation**. So, ORM tools like Hibernate, TopLink and iBatis implements JPA specifications for data persistence.
+
+
+# HIBERNATE
 ## Entities relationships best practices
 The hibernate association classified into One-to-One, One-to-Many/Many-to-One and Many-to-Many.
 
