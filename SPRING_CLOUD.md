@@ -44,6 +44,20 @@ Topics are partitioned, meaning that a topic is spread over a number of buckets.
 
 To make your data fault-tolerant and high-available, every topic can be replicated, even across regions or data centers, so that there are always multiple brokers that have a copy of the data just in case things go wrong (they will).
 
+### Producer Microservice setup
+* Spring Web
+* Spring Boot Actuator
+* Lombok
+* Spring for Apache Kafka
+
+### Consumer Microservice setup
+* Spring Web
+* Spring Boot Actuator
+* Lombok
+* Spring for Apache Kafka
+* H2 Database
+* Spring Data JPA
+
 ### Docker Environment for Kafka
 Create a docker-compose.yml file, containing the required configurations to run Kafka, Kafdrop, and Zookeeper in Docker containers.
 ```
