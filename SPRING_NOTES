@@ -1,1 +1,196 @@
-## Spring Notes
+# Multithread
+## Thread Synchronization
+Synchronization in java is the capability to control the access of multiple threads to any shared resource. In the Multithreading concept, multiple threads try to access the shared resources at a time to produce inconsistent results. The synchronization is necessary for reliable communication between threads.
+
+Thread synchronization is two types, they are:
+
+**1.Mutual Exclusive**:
+
+A Mutex or Mutual Exclusive helps only one thread to access the shared resources. It won’t allow the accessing of shared resources at a time. It can be achieved in the following ways.
+
+Synchronized Method
+Synchronized block
+Static Synchronization
+
+**2. Cooperation (Inter Thread Communication in java)**
+
+### Lock Concept in Java
+Synchronization Mechanism developed by using the synchronized keyword in java language. It is built on top of the locking mechanism, this locking mechanism is taken care of by Java Virtual Machine (JVM). The synchronized keyword is only applicable for methods and blocks, it can’t apply to classes and variables. Synchronized keyword in java creates a block of code is known as a critical section. To enter into the critical section thread needs to obtain the corresponding object’s lock.
+
+### Java Synchronized Method
+If we use the Synchronized keywords in any method then that method is Synchronized Method. 
+
+It is used to lock an object for any shared resources. The object gets the lock when the synchronized method is called. The lock won’t be released until the thread completes its function.
+
+Syntax:
+```
+Acess_modifiers synchronized return_type method_name (Method_Parameters) {
+
+// Code of the Method.
+
+}
+```
+
+#### Java Synchronized Method Example:
+```
+class Power{  
+    synchronized void printPower(int n){ // method synchronized
+        int temp = 1;
+        for(int i=1;i<=5;i++){ 
+            System.out.println(Thread.currentThread().getName() + ":- " +n + "^"+ i + " value: " + n*temp);
+            temp = n*temp;
+            try{  
+                Thread.sleep(500);  
+            } catch(Exception e){
+                System.out.println(e);
+            }  
+        }  
+    }  
+}  
+
+class Thread1 extends Thread{  
+    Power p;
+
+    Thread1(Power p){  
+        this.p=p;  
+    } 
+
+    public void run(){  
+        p.printPower(5);  
+    }  
+}
+
+class Thread2 extends Thread{  
+    Power p;  
+
+    Thread2(Power p){  
+        this.p=p;  
+    }  
+
+    public void run(){  
+        p.printPower(8);  
+    }  
+} 
+
+public class Synchronization_Example2{  
+    public static void main(String args[]){  
+        Power obj = new Power();//only one object  
+        Thread1 p1=new Thread1(obj);  
+        Thread2 p2=new Thread2(obj);  
+
+        p1.start();  
+        p2.start();
+    }  
+}
+```
+
+Output:
+
+Thread-0:- 5^1 value: 5
+
+Thread-0:- 5^2 value: 25
+
+Thread-0:- 5^3 value: 125
+
+Thread-0:- 5^4 value: 625
+
+Thread-0:- 5^5 value: 3125
+
+Thread-1:- 8^1 value: 8
+
+Thread-1: – 8^2 value: 64
+
+Thread-1:- 8^3 value: 512
+
+Thread-1:- 8^4 value: 4096
+
+Thread-1:- 8^5 value: 32768
+
+Here we used synchronized keywords. It helps to execute a single thread at a time. It is not allowing another thread to execute until the first one is completed, after completion of the first thread it allowed the second thread. Now we can see the output correctly the powers 5 and 8 from n1 to n5. Thread-0 completed then only thread-1 begin.
+
+
+### Synchronized Block
+Suppose you don’t want to synchronize the entire method, you want to synchronize few lines of code in the method, then a synchronized block helps to synchronize those few lines of code. It will take the object as a parameter. It will work the same as Synchronized Method. In the case of synchronized method lock accessed is on the method but in the case of synchronized block lock accessed is on the object.
+
+Syntax:
+```
+synchronized (object) {
+    //code of the block.
+}
+
+Program to understand the Synchronized Block:
+
+class Power{  
+    void printPower(int n){ 
+        synchronized(this){ //synchronized block
+            int temp = 1;
+            for(int i=1;i<=5;i++){ 
+                System.out.println(Thread.currentThread().getName() + ":- " +n + "^"+ i + " value: " + n*temp);
+                temp = n*temp;
+     
+                try{  
+                    Thread.sleep(500);  
+                } catch(
+                    Exception e){System.out.println(e);
+                }  
+            }  
+        }  
+    }  
+}
+  
+class Thread1 extends Thread {  
+    Power p;  
+    Thread1(Power p){  
+        this.p=p;  
+    }  
+
+    public void run(){  
+        p.printPower(5);  
+    }  
+}  
+
+class Thread2 extends Thread {  
+    Power p;  
+    Thread2(Power p){  
+        this.p=p;  
+    }  
+
+    public void run(){  
+        p.printPower(8);  
+    }  
+}  
+  
+public class Synchronization_Example3 {  
+    public static void main(String args[]){  
+        Power obj = new Power();//only one object  
+        Thread1 p1=new Thread1(obj);  
+        Thread2 p2=new Thread2(obj);  
+
+        p1.start();  
+        p2.start();
+    }  
+}
+```
+Output:
+
+Thread-0:- 5^1 value: 5
+
+Thread-0:- 5^2 value: 25
+
+Thread-0:- 5^3 value: 125
+
+Thread-0:- 5^4 value: 625
+
+Thread-0:- 5^5 value: 3125
+
+Thread-1:- 8^1 value: 8
+
+Thread-1:- 8^2 value: 64
+
+Thread-1:- 8^3 value: 512
+
+Thread-1:- 8^4 value: 4096
+
+Thread-1:- 8^5 value: 32768
+
+In this example, we didn’t synchronize the entire method but we synchronized few lines of code in the method. We got the results exactly as the synchronized method.
