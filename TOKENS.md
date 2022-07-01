@@ -1,5 +1,2 @@
 # Github personal token
-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
-
-# IntelliJ IDEA GitHub integration plugin
-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
+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
