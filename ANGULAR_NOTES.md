@@ -101,6 +101,9 @@ const url = `${this.apiRoot}/get`;
       .subscribe(response => console.log(response));
 ```
 
-## Handling errors
-
-
+### Summary
+* We setup HTTP by adding **HttpModule** to our **NngModule.imports**
+* Each HTTP verb has an associated function on the Http service.
+* Requests return **Observables**.
+* Handle HTTP errors via standard Observable or Promise error handlers.
+* Send custom headers via an instance of **HttpHeaders**.
