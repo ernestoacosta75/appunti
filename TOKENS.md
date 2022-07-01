@@ -1,2 +1,5 @@
 # Github personal token
 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
+
+## WorkToken
+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

@@ -107,3 +107,45 @@ const url = `${this.apiRoot}/get`;
 * Requests return **Observables**.
 * Handle HTTP errors via standard Observable or Promise error handlers.
 * Send custom headers via an instance of **HttpHeaders**.
+
+# HTTP with Promises
+
+## CORS
+To prevent attacks on websites, browsers restrict cross-origin HTTP requests from scripts. XMLHttpRequest and Fetch API follow the same-origin policy and can only process requests from the origin where the application was loaded.
+
+## CORS in Angular
+Here are the few steps needed to fix the CORS issues in Angular to ensure a smooth data transfer between client and server:
+
+### Create a Proxy Config file
+In your application, reate a proxy.config.json file in the src folder. Open the file and append the following code to allow all the /api/ requests to be redirected to the target hostname:
+```
+{
+    "/api/*": {
+        "target": "http://localhost:3000",
+        "secure": false,
+        "logLevel": "debug"
+    }
+}
+```
+
+### Append proxy config key
+In your angular.json file, add the following key-value pairs in the “serve -> options” field that points it to your proxy.config.json file:
+```
+"architect": {
+  "serve": {
+    "builder": ""
+    "options": {
+      "proxyConfig": "src/proxy.conf.json"
+    },
+  }
+}
+```
+
+### Run
+Finally, you may run the dev server using:
+```
+ng serve
+```
+### Summary
+* **CORS** is an HTTP header- based mechanism that allows the server to indicate any other domain, scheme, 
+  or port origins and enables them to be loaded.
