@@ -147,5 +147,7 @@ Finally, you may run the dev server using:
 ng serve
 ```
 ### Summary
+* Create an *intermediate service* which has the reponsability of communicating with an API.
+* We can implement a Http solution using Promises (synchronous code).
 * **CORS** is an HTTP header- based mechanism that allows the server to indicate any other domain, scheme, 
   or port origins and enables them to be loaded.
