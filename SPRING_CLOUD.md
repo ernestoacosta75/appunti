@@ -33,6 +33,21 @@ An event records the fact that something happened, carrying a message, that can 
 
 Producers are those that publish (write) events to Kafka, and consumers are those that subscribe (read and process) these events.
 
+Kafka uses a **binary protocol over TCP**. The protocol defines all APIs as request response message pairs. All messages are size delimited and are made up of the following primitive types.
+The server guarantees that on a single TCP connection, requests will be processed in the order they are sent and responses will return in that order as well.
+The benefits of this are:
+* **Greater parallelism**. A Kafka client will typically open up TCP connections to multiple brokers in 
+  the cluster and send or fetch data in parallel across multiple partitions of the same topic.
+* **Better network utilization** as HTTP headers can add a lot of size to otherwise small messages while 
+  Kafka’s wire protocol is a compact binary protocol.  
+* **Kafka clients handle load balancing, failover, and cluster expansion or contraction automatically** 
+  while REST clients typically require a third party load balancer to achieve the same functionality.
+* **Kafka client can send their own authentication credentials for access control and bandwidth throttling (quotas)** while all REST clients look to the kafka cluster as one Kafka client and therefore have common ACL privileges.
+* **Kafka client libraries buffer and batch messages together into smaller numbers** of Kafka produce or 
+  fetch requests while HTTP can only batch data if the programmer thought to publish them as a single batch.
+* **The native Kafka protocol supports more than just what the producer/consumer api exposes**. There is 
+  also an Admin API for creating topics, and modifying topic configurations. These functions are not (yet) exposed through the most popular REST Proxy implementations.
+
 ### Topics
 Events are organized and durably stored in topics. A topic is similar to a folder, and these events are the files in that folder. Topics are multi-producer and multi-subscriber, meaning that we can have zero, one or many of them both.
 
