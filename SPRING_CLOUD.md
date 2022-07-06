@@ -1,3 +1,85 @@
+# STEPS TO FOLLOW FOR CLOUD DEVELOPMENT
+1. Configure graceful shutdown and grace period for the application.
+2. Configure the Cloud Native Buildpacks integration and package the application as a container.
+3. Update your Docker Compose file to run the microservice as a container.
+4. Bootstrap a deployment pipeline for Config Service by implementing the workflow for the commit stage using GitHub Actions.
+5. Write the Deployment and Service manifests for deploying the microservice to a Kubernetes cluster.
+6. Update the commit stage of the deployment pipeline for the microservice to validate the Kubernetes manifests.
+7. Configure Tilt to automate the Config Service deployment to your local Kubernetes cluster bootstrapped with 
+   minikube.
+   Tilt (tilt.dev) aims at providing a good developer experience when working on Kubernetes. It’s an open-source tool that offers features to build, deploy, and manage containerized workloads in your local environment. We’ll use some of its basic features to automate a development workflow for a specific application, but Tilt can also help you orchestrate the deployment of multiple applications and services in a centralized way.
+   The goal is to design a workflow that will automate the following steps for you:
+   * packaging a Spring Boot application as a container image using Cloud Native Buildpacks;
+   * uploading the image to a Kubernetes cluster (in our case, the one created with minikube);
+   * applying all the Kubernetes objects declared in the YAML manifests;
+   * enabling the port-forward functionality to access applications from your local computer;
+   * giving you easy access to the logs from the applications running on the cluster.
+
+    Before configuring Tilt, make sure you have a database instance up and running in your local Kubernetes
+    cluster.
+    Open a Terminal window, navigate to the kubernetes/platform/development folder in your polar-deployment repository, and run the following command to deploy PostgreSQL.
+    ```
+    kubectl apply -f services
+    ```
+    Let’s now see how to configure Tilt to establish that automated development workflow.
+    Tilt can be configured via a Tiltfile, an extensible configuration file written in Starlark (a simplified Python dialect). Go to your Catalog Service project (catalog-service) and create a file named Tiltfile (no extension) in the root folder. The file will contain three main configurations:
+    * how to build a container image (Cloud Native Buildpacks);
+    * how to deploy the application (Kubernetes YAML manifests);
+    * how to access the application (port forwarding).
+    ### Tilt configuration for Catalog Service (Tiltfile)
+    ```
+      custom_build(
+      ref = 'catalog-service',
+      command = './gradlew bootBuildImage --imageName $EXPECTED_REF',
+      deps = ['build.gradle', 'src']
+      )
+      k8s_yaml(['k8s/deployment.yml', 'k8s/service.yml'])
+      k8s_resource('catalog-service', port_forwards=['9001'])
+    ```
+
+    Open a Terminal window, navigate to the root folder of your Catalog Service project, and run the
+    following command to start Tilt.
+    ```
+      tilt up
+    ```
+
+# Deployment pipeline: Build and test
+Continuous delivery is a holistic approach for quickly, reliably, and safely delivering software. The primary pattern for adopting such an approach is the deployment pipeline, which goes from code commit to releasable software. It should be automated as much as possible and represent the only path to production.
+We can identify a few key stages in a deployment pipeline:
+* **Commit stage**. After a developer commits new code to the mainline, this stage goes through build, unit tests, integration tests, static code analysis, and packaging. At the endof this stage, an executable application artifact is published to an artifact repository. That is a release candidate. For example, it can be a JAR artifact published to a Maven repository or a container image published to a container registry. This stage supports the continuous ntegration practice. It’s supposed to be fast, possibly under five minutes, to provide developers with fast feedback about their changes and allow them to move on to the next task.
+* **Acceptance stage**. The publication of a new release candidate to the artifact repository triggers this stage, which consists of deploying the application to production-like environments and running additional tests to increase the confidence about its releasability. The tests running in the acceptance stage are usually slow, but we should
+strive to keep the whole deployment pipeline execution under one hour. Examples of tests included in this stage are functional acceptance tests and non-functional acceptance tests, such as performance tests, security tests, and compliance tests. If necessary, this stage can also include manual tasks like exploratory and usability tests. At the end of this stage, the release candidate is ready to be deployed to production at any time. If we are still not confident about it, this stage is missing some tests.
+* **Production stage**. After a release candidate has gone through the commit and acceptance stages, we are confident enough to deploy it to production. This stage is triggered manually or automatically, depending on whether it’s been decided to adopt a continuous deployment practice. The new release candidate is deployed to a production environment
+using the same deployment scripts employed (and tested) in the acceptance stage. Optionally, some final automated tests can be run to verify the deployment was successful.
+
+The vulnerability scanner we’ll use in the Polar Bookshop project is grype (github.com/anchore/grype), a powerful open-source tool increasingly used in the cloud native world. For example, it’s part of the security supply chain solution provided by the VMware Tanzu Application Platform.
+
+Open a Terminal window and navigate to the root folder of your micro service project. Then, use grype to scan your Java codebase for vulnerabilities. The tool will download a list of known vulnerabilities (a vulnerability database)
+and scan your project against them. The scanning happens locally on your machine, which means none of your files or artifacts is sent to an external service. That makes it a good fit for more regulated environments or air-gapped scenarios.
+```
+grype .
+```
+
+## Implementing the commit stage with GitHub Actions
+
+# Testing a RESTful application with Spring
+We write **unit tests** to verify the behavior of single application components in isolation, while **integration tests** to assert the overall functioning of different parts of an application interacting with each other.
+In Spring, unit tests aren’t required to load the Spring application context and don’t rely on any Spring library. On the other hand, integration tests need a Spring application context to run.
+
+## Integration tests with @SpringBootTest
+A Spring Boot integration test can be initialized with a mock web environment or a running server.
+Recent versions of Spring Framework and Spring Boot have extended the features for testing web applications. You can now use the **WebTestClient** class to test REST APIs both on mock environments and running servers.
+
+
+## Testing REST controllers with @WebMvcTest
+@WebMvcTest loads a Spring application context in a mock web environment (no running server), configures the Spring MVC infrastructure, and includes only the beans used by the MVC layer, like @RestController and @RestControllerAdvice. It’s a good idea to limit the context to the beans used by the specific controller under test. We can do so by providing the controller class as an argument to the @WebMvcTest annotation.
+
+## Testing the JSON serialization with @JsonTest
+Using the @JsonTest annotation, you can test JSON serialization and deserialization against an application context, including only configuration and beans needed for the purpose. The JacksonTester utility class lets you perform parsing operations using the Jackson library.
+
+## Testing data persistence with Spring and Testcontainers
+
+
 # Local Kubernetes development with Skaffold and Octant
 These tools are used to set up a local Kubernetes development workflow to automate steps like building images and applying manifests to a Kubernetes cluster. It’s part of what is defined as the inner loop of working with a Kubernetes platform. Using Skaffold, you can focus on the business logic of your applications rather than on all those infrastructural concerns, and Octant is used to visualize and manage the Kubernetes objects through a convenient GUI.
 
