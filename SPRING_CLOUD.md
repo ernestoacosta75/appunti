@@ -716,3 +716,101 @@ public Mono<Book> getBookByIsbn(String isbn) {
 }
 ```
 (1) Returns an empty object when a 404 response is received.
+
+# API gateway and circuit breakers
+* How to use Spring Cloud Gateway to build an Edge Service application, implement an API gateway, and some of those 
+  cross-cutting concerns.
+* Improve the resilience of the system by configuring circuit breakers with Spring Cloud Circuit Breaker, defining rate 
+  limiters with Spring Data Redis Reactive, and using retries and timeouts.
+* How to store the web session state using Spring Session Redis, a NoSQL, in-memory data store.
+* How to manage external access to the applications running in a Kubernetes cluster relying on the Kubernetes Ingress 
+  API.
+
+Adding Edge Service to the system lets you define an API gateway to decouple the internal services from its external clients and provides you with a central place to implement cross-cutting concerns like authentication and authorization, monitoring, and resilience.
+
+Spring Cloud Gateway greatly simplifies building edge services, focusing on simplicity and productivity. Furthermore, since it’s based on a reactive stack, it can scale efficiently to handle the high workload naturally happening at the edge of a system.
+```
+server:
+  port: 9000
+  netty:
+    connection-timeout: 2s
+  shutdown: graceful
+
+spring:
+  application:
+    name: edge-service
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+```
+
+## Defining routes and predicates
+Spring Cloud Gateway provides three main building blocks:
+* **Route**. It’s identified by a unique ID, a collection of predicates deciding whether to follow the route, a URI for 
+  forwarding the request if the predicates allow, and a collection of filters applied either before or after forwarding the request downstream.
+* **Predicate**. It matches anything from the HTTP request, including path, host, headers, query parameters, cookies, 
+  and body.
+* **Filter**. It modifies an HTTP request or response before or after forwarding the request to the downstream service.
+```
+...
+spring:
+  cloud:
+    gateway:
+      routes:                                                         (1)
+        - id: catalog-route                                           (2)
+          uri: ${CATALOG_SERVICE_URL:http://localhost:9001}/books
+          predicates:
+            - Path=/books/**                                          (3)
+        - id: order-route
+          uri: ${ORDER_SERVICE_URL:http://localhost:9002}/orders      (4)
+          predicates:
+            - Path=/orders/**
+```
+(1) A list of route definitions.
+(2) The route ID.
+(3) The predicate is a path to match.
+(4) The URI value comes from an environment variable, or else the default.
+
+## Processing requests and responses through filters
+Routes and predicates alone make the application act as a proxy, but filters make Spring Cloud Gateway really powerful. Filters can run before forwarding incoming requests to a downstream application (**pre-filters**). For example, they’re used for:
+* manipulating the request headers;
+* applying rate limiting and circuit breaking;
+* defining retries and timeouts for the proxied request;
+* triggering an authentication flow with OAuth2 and OpenID Connect.
+
+Other filters can apply to outgoing responses before sending them back to the client and after being received from the downstream application (post-filters). For example, they’re used for:
+* setting security headers;
+* manipulating the response body to remove sensitive information.
+
+Spring Cloud Gateway comes bundled with many filters that you can use to perform different actions, including adding headers to a request, configuring a circuit breaker, saving the web session, retrying the request on failure, or activating a rate limiter.
+
+### USING THE RETRY FILTER
+You should use
+a backoff strategy instead. By default, the delay is computed using the formula **firstBackoff * (factor ^ n)**. If you set the **basedOnPreviousValue** parameter to **true**, the formula will be **prevBackoff * factor**.
+```
+spring:
+  cloud:
+    gateway:
+      default-filters:                                                                  (1)
+        - name: Retry                                                                   (2)
+          args:
+            retries: 3                                                                  (3)  
+            methods: GET                                                                (4)
+            series: SERVER_ERROR                                                        (5)
+            exceptions: java.io.IOException, java.util.concurrent.TimeoutException      (6)
+            backoff:                                                                    (7)  
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+```
+(1) A list of default filters.
+(2) The name of the filter.
+(3) Maximum of 3 retry attempts.
+(4) Retries only GET requests.
+(5) Retries only when 5xx errors.
+(6) Retries only when the given exceptions are thrown.
+(7) Retries with a delay computed as "firstBackoff * (factor ^ n)".
+
+**The retry pattern is useful when a downstream service is momentarily unavailable.**
+
+## Fault tolerance with Spring Cloud Circuit Breaker and Resilience4J
