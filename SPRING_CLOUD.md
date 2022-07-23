@@ -1,47 +1,12 @@
 # STEPS TO FOLLOW FOR CLOUD DEVELOPMENT
 1. Configure graceful shutdown and grace period for the application.
-2. Configure the Cloud Native Buildpacks integration and package the application as a container.
-3. Update your Docker Compose file to run the microservice as a container.
-4. Bootstrap a deployment pipeline for Config Service by implementing the workflow for the commit stage using GitHub Actions.
+2. Add Spring Cloud Config Client to Order Service to make it fetch configuration data from Config Service.
+3. Configure the Cloud Native Buildpacks integration, containerize the application, and define both CI and CD pipelines
+4. Update your Docker Compose file to run the microservice as a container.
 5. Write the Deployment and Service manifests for deploying the microservice to a Kubernetes cluster.
 6. Update the commit stage of the deployment pipeline for the microservice to validate the Kubernetes manifests.
-7. Configure Tilt to automate the Config Service deployment to your local Kubernetes cluster bootstrapped with 
-   minikube.
-   Tilt (tilt.dev) aims at providing a good developer experience when working on Kubernetes. It’s an open-source tool that offers features to build, deploy, and manage containerized workloads in your local environment. We’ll use some of its basic features to automate a development workflow for a specific application, but Tilt can also help you orchestrate the deployment of multiple applications and services in a centralized way.
-   The goal is to design a workflow that will automate the following steps for you:
-   * packaging a Spring Boot application as a container image using Cloud Native Buildpacks;
-   * uploading the image to a Kubernetes cluster (in our case, the one created with minikube);
-   * applying all the Kubernetes objects declared in the YAML manifests;
-   * enabling the port-forward functionality to access applications from your local computer;
-   * giving you easy access to the logs from the applications running on the cluster.
+7. Configure Skaffold to automate the Order Service deployment to your local Kubernetes cluster initialized with kind.
 
-    Before configuring Tilt, make sure you have a database instance up and running in your local Kubernetes
-    cluster.
-    Open a Terminal window, navigate to the kubernetes/platform/development folder in your polar-deployment repository, and run the following command to deploy PostgreSQL.
-    ```
-    kubectl apply -f services
-    ```
-    Let’s now see how to configure Tilt to establish that automated development workflow.
-    Tilt can be configured via a Tiltfile, an extensible configuration file written in Starlark (a simplified Python dialect). Go to your Catalog Service project (catalog-service) and create a file named Tiltfile (no extension) in the root folder. The file will contain three main configurations:
-    * how to build a container image (Cloud Native Buildpacks);
-    * how to deploy the application (Kubernetes YAML manifests);
-    * how to access the application (port forwarding).
-    ### Tilt configuration for Catalog Service (Tiltfile)
-    ```
-      custom_build(
-      ref = 'catalog-service',
-      command = './gradlew bootBuildImage --imageName $EXPECTED_REF',
-      deps = ['build.gradle', 'src']
-      )
-      k8s_yaml(['k8s/deployment.yml', 'k8s/service.yml'])
-      k8s_resource('catalog-service', port_forwards=['9001'])
-    ```
-
-    Open a Terminal window, navigate to the root folder of your Catalog Service project, and run the
-    following command to start Tilt.
-    ```
-      tilt up
-    ```
 
 # Deployment pipeline: Build and test
 Continuous delivery is a holistic approach for quickly, reliably, and safely delivering software. The primary pattern for adopting such an approach is the deployment pipeline, which goes from code commit to releasable software. It should be automated as much as possible and represent the only path to production.
@@ -543,3 +508,211 @@ public class Scheduler {
 
 The topic will be created automatically, but we could define the bean like we defined previously. The output would be:
 ![alt text](https://miro.medium.com/max/468/1*Ugw_bvMdDw3GpewKqvwQ3w.png "Logo Title Text 1")
+
+# Ensuring disposability: Graceful shutdown
+Gracefully shutting down means the application stops accepting new requests, completes all those still in progress, and closes any open resource like database connections.
+By default, Spring Boot stops the server immediately after receiving a termination signal (SIGTERM). You can switch to a graceful mode by configuring SIGTERM the **server.shutdown** property.
+You can also configure the **grace period**, which is how long the application is allowed to process all the pending requests. After the grace period expires, the application is terminated even if there are still pending requests. By default, the grace period is 30 seconds. You can change it through the **spring.lifecycle.timeout-per-shutdown-phase** property.
+**application.yml**
+```
+server:
+  port: 9001
+  shutdown: graceful                    (1)
+  tomcat:
+    connection-timeout: 2s
+    threads:
+      max: 50
+      min-spare: 5
+spring:
+  application:
+    name: catalog-service
+  lifecycle:
+    timeout-per-shutdown-phase: 15s     (2)
+```
+(1) Enable graceful shutdown.
+(2) Defines a 15s grace period.
+
+## Configure a delay in Kubernetes before starting the graceful shutdown procedure (deployment.yml)
+```
+...
+spec:
+  containers:
+    - name: catalog-service
+      image: polarbookshop/catalog-service:0.0.1-SNAPSHOT
+      imagePullPolicy: Always
+      lifecycle:
+        preStop:                                            (1)
+          exec:
+            command: [ "sh", "-c", "sleep 5" ]
+```
+(1) Makes Kubernetes wait 5 seconds before sending the SIGTERM signal to the Pod.
+
+# Project Reactor: Reactive streams with Mono and Flux
+Reactive streams work according to a producer/consumer paradigm. Producers are called **publishers**. They produce data that might be eventually available. Reactor provides publishers two central APIs implementing the Producer<T> interface for objects of type <T> and used to compose asynchronous, observable data streams: Mono<T> and Flux<T>.
+* **Mono<T>** represents a single asynchronous value or empty result (0..1).
+* **Flux<T>** represents an asynchronous sequence of zero or more items (0..N).
+
+## Understanding the Spring reactive stack
+The servlet stack is based on the Servlet API and a Servlet container (e.g., Tomcat). In contrast, the reactive model is based on the Reactive Streams API (implemented by Project Reactor) and either Netty or a Servlet container (version 3.1 as a minimum). Both stacks let you build RESTful applications using either classes annotated as @RestControlleror functional endpoints called Router Functions.
+The servlet stack uses Spring MVC, while the reactive stack uses Spring WebFlux.
+
+## MANAGING DATABASE SCHEMAS WITH FLYWAY
+Spring Data R2DBC supports initializing data sources through **schema.sql** and **data.sql** files, just like Spring Data JDBC.
+Flyway doesn’t support R2DBC yet, so you need to provide a JDBC driver to communicate with the database. The Flyway migration tasks are only run at application startup and in a single thread. Using a non-reactive communication approach for this one case doesn’t impact the overall application scalability and efficiency.
+```
+...
+  r2dbc:
+    username: ${DB_USERNAME:order_user}
+    password: ${DB_PASSWORD:TXlzcWwzMjFPcmRlcg==}
+    url: r2dbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:polardb_catalog}?useSSL=false&allowPublicKeyRetrieval=true
+    pool:
+      max-create-connection-time: 2s
+      initial-size: 5
+      max-size: 10
+  flyway:
+    user: ${spring.r2dbc.username}
+    password: ${spring.r2dbc.password}
+    url: ${FLYWAY_URI}
+    table: order_service_flyway_schema_history
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:mysqlmigrations
+```
+## Exposing a REST API with Spring WebFlux
+There are two options for defining RESTful endpoints in a Spring WebFlux application: @RestController classes or functional beans (i.e., Router Functions).
+
+### Reactive clients with Spring WebClient
+**WebClient** is the modern alternative to **RestTemplate**. It provides blocking and non-blocking I/O, making it the perfect candidate for both imperative and reactive applications. It can be operated through a functional-style, fluent API that lets you configure any aspect of the HTTP interaction.
+
+### Implementing REST clients with WebClient
+1) **Configure a WebClient bean to call Catalog Service**
+```
+@Configuration
+public class ClientConfig {
+  @Bean
+  WebClient webClient(ClientProperties clientProperties, 
+      WebClient.Builder webClientBuilder) {                       (1)
+    return webClientBuilder
+      .baseUrl(clientProperties.catalogServiceUrl().toString())   (2)
+      .build();
+  }
+}
+```
+(1) An object auto-configured by Spring Boot to build WebClient beans.
+(2) Configures the WebClient base URL to the Catalog Service URL defined as a custom property.
+
+2) Next, create a reactive REST client where you are going to use the WebClient bean to send HTTP calls to the     
+   endpoint exposed.
+```
+@Component
+public class BookClient {
+  private static final String BOOKS_ROOT_API = "/books/";   (1)
+  private final WebClient webClient;
+
+  public BookClient(WebClient webClient) {
+    this.webClient = webClient;                             (2)
+  }
+
+  public Mono<Book> getBookByIsbn(String isbn) {
+    return webClient
+      .get()                                                (3)
+      .uri(BOOKS_ROOT_API + isbn)                           (4)
+      .retrieve()                                           (5)
+      .bodyToMono(Book.class);                              (6)  
+  }
+}
+```
+(1) The root endpoint exposed by Catalog Service to manage books.
+(2) A WebClient bean as configured previously.
+(3) The request should use the GET method.
+(4) The target URI of the request is /books/{isbn}.
+(5) Sends the request and retrieves the response.
+(6) Returns the retrieved object as "Mono<Book>".
+
+### Resilient applications with Reactive Spring
+The goal is to keep the system available without the user noticing. In the worst-case scenario, it could have degraded functionality, but it should still be available.
+The integration point between the microservices will be done using Reactive Spring to configure timeouts, retries, and fallbacks.
+
+#### Timeouts
+Timeouts (also called ) are a simple, yet effective tool time limiters to preserve the responsiveness of your application in case a response is not received within a reasonable time period.
+**Defining a timeout for WebClient**
+Project Reactor provides a operator for defining a time limit timeout() for completing an operation. You can chain it with the result of the WebClient call to continue the reactive stream.
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2));      (1)
+}
+```
+(1) Sets a timeout for the GET request to 2 seconds.
+
+Instead of throwing an exception when the timeout expires, you have the chance to provide a fallback behavior. Considering that Order Service can’t accept an order if the book availability is not verified, you might think of returning an empty result so that the order will be rejected. You can define a reactive empty result using Mono.empty().
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2))   (1)
+}
+```
+(1) Sets a timeout for the GET request to 2 seconds.
+
+Instead of throwing an exception when the timeout expires, you have the chance to provide a fallback behavior. You
+can define a reactive empty result using Mono.empty().
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2), Mono.empty())   (1)
+}
+```
+(1) The fallback returns an empty "Mono" object.
+
+You should carefully design a time-limiting strategy for all the integration points in your system to meet your software SLAs and guarantee a good user experience.
+
+#### Retries
+When a service downstream doesn’t respond within a specific time limit or replies with a server error related to its momentary inability to process the request, you can configure your client to try it again.
+A better approach is using an **exponential backoff** to perform each retry attempt with a growing delay. By waiting for more and more time between one attempt and the next, it’s more likely the backing service has had the time to recover and become responsive again. The strategy for computing the delay can be configured.
+For instance: each retry attempt’s delay is computed as the number of attempts multiplied by 100ms (the initial backoff value).
+
+##### DEFINING RETRIES FOR WEBCLIENT
+Project Reactor provides a retryWhen() operator to retry an operation when it fails. **The position where you apply it to the reactive stream matters**.
+* Placing the **retryWhen()** operator **after** timeout() means that the timeout is applied to each retry attempt.
+* Placing the **retryWhen()** operator **before** timeout() means that the timeout is applied to the overall operation 
+  (that is, the whole sequence of initial request and retries has to happen within the given time limit).
+
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2), Mono.empty())
+    .retryWhen(Retry.backoff(3, Duration.ofMillis(100)));   (1)
+}
+```
+(1) Exponential backoff is used as the retry strategy. 3 attempts allowed and 100ms initial backoff.  
+
+##### UNDERSTANDING HOW TO USE RETRIES EFFECTIVELY
+* Use them wisely.
+* You shouldn’t retry non-idempotent requests, or you’ll risk generating inconsistent states.
+* When retries are configured in a flow where the user is involved, remember to balance resilience and user experience. 
+  You don’t want users to wait too much while retrying the request behind the scenes. If you can’t avoid that, make sure you inform the users and give them feedback about the status of the request.
+
+#### Fallbacks and error handling
+A fallback behavior can help you limit the fault to a small area while preventing the rest of the system from misbehaving or entering a faulty state.
+You want to include fallbacks into your general strategy to make your system resilient, not just for a specific case like timeouts. A fallback function can be triggered when some errors or exceptions occur, but they’re not all the same.
+
+Project Reactor provides an operator **onErrorResume()** to define a fallback when a specific error occurs. You can add it to the reactive stream after the **timeout()** operator and before the **retryWhen()** so that if a 404 response is received, the retry operator is not triggered.
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2), Mono.empty())
+    .onErrorResume(WebClientResponseException.NotFound.class, exception -> Mono.empty())  (1)
+    .retryWhen(Retry.backoff(3, Duration.ofMillis(100)));   
+}
+```
+(1) Returns an empty object when a 404 response is received.
