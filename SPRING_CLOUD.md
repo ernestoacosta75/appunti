@@ -814,3 +814,204 @@ spring:
 **The retry pattern is useful when a downstream service is momentarily unavailable.**
 
 ## Fault tolerance with Spring Cloud Circuit Breaker and Resilience4J
+The Spring Cloud Circuit Breaker project provides an abstraction for defining circuit breakers in a Spring application. Resilience4J became the preferred choice because it provides the same features offered by Hystrix and more.
+
+### Introducing circuit breakers with Spring Cloud Circuit Breaker
+**pom.xml**:
+org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4
+
+The **CircuitBreaker** filter in Spring Cloud Gateway relies on Spring Cloud CircuitBreaker Circuit Breaker to wrap a route. Being a **GatewayFilter**, you can apply it to specific routes or define it as a default filter. You can also specify an optional fallback URI to forward the request when the circuit is in an open state.
+```
+'''
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: catalog-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:9001}/books
+          predicates:
+            - Path=/books/**
+          filters:
+            - name: CircuitBreaker                                      (1)
+              args:
+                name: catalogCircuitBreaker                             (2)
+                fallbackUri: forward:/catalog-fallback                  (3)
+        - id: order-route
+          uri: ${ORDER_SERVICE_URL:http://localhost:9002}/orders
+          predicates:
+            - Path=/orders/**
+          filters:
+            - name: CircuitBreaker                                      (4)
+              args:
+                name: orderCiruitBreaker
+```
+(1) Name of the filter.
+(2) Name of the circuit breaker.
+(3) Forwards request to this URI when the circuit is open.
+(4) No fallback defined for this circuit breaker.
+
+### Configuring a circuit breaker with Resilience4J
+Yyou need to configure the circuit breakers themselves.
+You can configure circuit breakers through the properties provided by Resilience4J or via a **Customizer** bean. Since we’re using the reactive version of Resilience4J, it would be a **Customizer<ReactiveResilience4JCircuitBreakerFactory>**.
+For example, we can define circuit breakers to consider a window of 20 calls (**slidingWindowSize**). Each new call will make the window move, dropping the oldest registered call. When at least 50% of the calls in the window produced an error (**failureRateThreshold**), the circuit breaker trips, and the circuit enters the open state. After 15 seconds (**waitDurationInOpenState**), the circuit is allowed to transition to a half-open state in which 5 calls are permitted (**permittedNumberOfCallsInHalfOpenState**). If at least 50% of them result in an error, the circuit will go back to the open state. Otherwise, the circuit breaker trips to the close state.
+```
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:                                      (1)
+        slidingWindowsSize: 20                      (2)
+        failureRateThreshold: 50                    (3)
+        waitDurationInOpenState: 15000              (4)
+        permittedNumberOfCallsInHalfOpenState: 5    (5)
+  timelimiter:
+    configs:
+      default:                                      (6)
+        timeoutDuration: 5s                         (7)
+```
+(1) Default configuration bean for all circuit breakers.
+(2) The size of the sliding window used to record the outcome of calls when the circuit is closed.
+(3) When the failure rate is above the threshold, the circuit becomes open.
+(4) Waiting time before moving from open to half-open (ms).
+(5) Number of permitted calls when the circuit is half-open.
+(6) Default configuration bean for all time limiters.
+(7) Configures a timeout (seconds).
+
+We configure both the circuit breaker and a time limiter, a required component when using the Resilience4J implementation of Spring Cloud Circuit Breaker. The timeout configured via Resilience4J will take precedence over the response timeout for the Netty HTTP client (**spring.cloud.gateway.httpclient.response-timeout**).
+
+### Defining fallback REST APIs with Spring WebFlux
+WebFlux supports defining REST endpoints both using @RestController classes and Router Functions. Let’s use the functional way for declaring the fallback endpoints.
+Functional endpoints in Spring WebFlux are defined as routes in a **RouterFunction<ServerResponse>** bean, using the fluent API provided by **RouterFunctions**. For each route, you need to define the endpoint URL, a method, and a handler.
+```
+@Configuration
+public class WebEndpoints {
+
+    @Bean                                                                                   (1)
+    public RouterFunction<ServerResponse> routerFunction() {
+        return RouterFunctions.route()                                                      (2)
+                .GET("/catalog-fallback", request ->                                        (3)
+                        ServerResponse.ok()
+                                .body(Mono.just(""), String.class))
+                .POST("/catalog-fallback", request ->                                       (4)
+                        ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).build())
+                .build();                                                                   (5)
+    }
+}
+```
+(1) Functional REST endpoints are defined in a bean.
+(2) Offers a fluent API to build routes.
+(3) Fallback response used to handle the GET endpoint.
+(4) Fallback response used to handle the POST endpoint.
+(5) Builds the functional endpoints.
+
+In a real scenario, you might want to adopt different fallback strategies depending on the context, including throwing a custom exception to be handled from the client or returning the last value saved in cache for the original request.
+
+### Combining circuit breakers, retries, and time limiters
+When you combine multiple resilience patterns, the sequence in which they are applied is fundamental. Spring Cloud Gateway takes care of applying the **TimeLimiter** first (or the timeout on the HTTP client), then the **CircuitBreaker** filter, and finally **Retry**.
+![Combining circuit breakers, retries, and time limiters](combining_resilience_patterns.JPG)
+
+You can verify the result of applying these patterns to Edge Service using a tool like Apache Benchmark (httpd.apache.org/docs/2.4/programs/ab.html).
+Make sure microservices are not running. Then, enable debug logging for Resilience4J to follow the state transitions of the circuit breaker. At the end of your application.yml file, add the following configuration.
+```
+logging:
+  level:
+    io.github.resilience4j: DEBUG
+```
+
+Next, build and run Edge Service. Since all downstream services are not running (if they are, you should stop them), all the requests sent to them from Edge Service will  result in an error.
+```
+ab -n 21 -c 1 -m POST http://localhost:9000/orders
+```
+
+The circuit breaker is configured to trip to the open state when at least 50% of the calls in a 20-sized time window fails. Since you have just started the application, the circuit will transition to the open state after 20 requests. In the application logs, you can analyze how the requests have been handled. All requests fail, so the circuit breaker registers an ERROR event.
+```
+No Consumers: Event ERROR not published
+```
+
+At the 20th request, a FAILURE_RATE_EXCEEDED event is recorded because it exceeded the failure threshold. That will result in a STATE_TRANSITION event that will open the circuit.
+```
+No Consumers: Event ERROR not published
+No Consumers: Event FAILURE_RATE_EXCEEDED not published
+No Consumers: Event STATE_TRANSITION not published
+```
+
+The 21st request will not even try contacting Order Service: the circuit is open, so it cannot go through. A NOT_PERMITTED event is registered to signal why the request failed.
+```
+No Consumers: Event NOT_PERMITTED not published
+```
+
+## Rate limiting with Spring Cloud Gateway and Redis
+Rate limiting is a pattern used to control the rate of traffic sent to or received from an application, helping to make your system more resilient and robust. In the context of HTTP interactions, you can apply this pattern to control outgoing or incoming network traffic using client-side and server-side rate limiters, respectively.
+
+**Client-side rate limiters** is a useful pattern to adopt when third-party organizations like cloud providers manage and offer the downstream service. You want to avoid incurring extra costs for having sent more requests than the ones allowed by your subscription. In case of pay-per-use services, it helps prevent unexpected expenses.
+
+**Server-side rate limiters** are for constraining the number of requests received by an upstream service (or client) in a given period. This pattern is handy when implemented in an API gateway to protect the whole system from overloading or DoS attacks.
+
+### How to use the server-side rate limiter pattern using Spring Cloud Gateway and Spring Data Redis Reactive
+The solution is using a dedicated data service to store the rate-limiting state and make it available to all the application replicas. Enter Redis.
+Redis is an in-memory store that is commonly used as a cache, message broker, or database. In Edge Service, you’re going to use it as the data service backing the request limiter implementation provided by Spring Cloud Gateway. The Spring Data Reactive Redis project provides the integration between a Spring Boot application and Redis.
+Running it as a container:
+```
+  polar-redis:
+      image: "redis:7.0"
+      container_name: "polar-redis"
+      ports:
+        - '6379:6379'   
+```
+
+### Integrating Spring with Redis
+**pom.xml** : org.springframework.boot:spring-boot-starter-data-redis-reactive
+
+Then, in the application.yml file, you can configure the Redis integration through the properties provided by Spring Boot. Besides **spring.redis.host** and **spring.redis.port** for defining where to reach Redis, you can also specify connection and read timeouts using **spring.redis.connect-timeout** and **spring.redis.timeout** respectively.
+```
+spring:
+  redis:
+    connec-timeout: 2s              (1)
+    host: ${REDIS_HOST:localhost}   (2)
+    port: 6379                      (3)
+    timeout: 1s                     (4)
+```
+(1) Time limit for a connection to be established.
+(2) Default Redis host.
+(3) Default Redis port.
+(4) Time limit for a response to be received.
+
+### Using the RequestRateLimiter filter with Redis
+Depending on the requirements, you can configure the **RequestRateLimiter** filter for specific routes or as a default filter.
+The implementation of **RequestRateLimiter** on Redis is based on the **token bucket algorithm**.
+Each user is assigned a bucket inside which tokens are dripped overtime at a specific rate (**replenish rate**). Each bucket has a maximum capacity (**burst capacity**). When a user makes a request, a token is removed from its bucket. When there are no more tokens left, the request is not permitted, and the user will have to wait that more tokens are dripped into its bucket.
+```
+spring:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 10    (1)
+            redis-rate-limiter.burstCapacity: 20    (2)
+            redis-rate-limiter.requestedTokens: 1   (3)
+```
+(1) Number of tokens dripped in the bucket each second.
+(2) Allows request bursts of up to 20 requests
+(3) How many tokens a request costs.
+
+The **RequestRateLimiter** filter relies on a **KeyResolver** bean to derive the bucket to use per request. By default, it uses the currently authenticated user in Spring Security. You can define your own **KeyResolver** bean and make it return a constant value (for example, ANONYMOUS) so that any request will be mapped to the same bucket.
+```
+@Configuration
+public class RateLimiterConfig {
+
+    @Bean
+    public KeyResolver keyResolver() {              (1)
+        return exchange -> Mono.just("ANONYMOUS");
+    }
+}
+```
+(1) Rate limiting is applied to requests using a constant key.
+
+Testing using Apache Benchmark:
+```
+ab -n 30 -c 30 http://localhost:9000/books
+```
+
+**-n**: number of requests
+**-c**: number of requests to be runned concurrently
+
+## Distributed session management with Redis
