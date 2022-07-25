@@ -1015,3 +1015,21 @@ ab -n 30 -c 30 http://localhost:9000/books
 **-c**: number of requests to be runned concurrently
 
 ## Distributed session management with Redis
+Edge Service is not dealing with any business entity to store, but it still needs a stateful service (Redis) to store the state related to the **RequestRateLimiter** filter. When Edge Service is replicated, it’s important to keep track of how many requests are left before exceeding the threshold. Using Redis, the rate limiter functionality is guaranteed consistently and safely.
+
+### Handling sessions with Spring Session Data Redis
+**pom.xml**: org.springframework.session:spring-session-data-redis
+
+* Keep session data in an external service so that they survive the application shutdown.
+* Another fundamental reason for using a distributed session store is that you usually have multiple instances for the 
+  same application. You want them to access the same session data to provide a seamless experience to the user.
+
+Instruct Spring Boot to use Redis for session management (**spring.session.store-type**) and define a unique namespace to prefix all session data coming from Edge Service (**spring.session.redis.namespace**). You can also define a timeout for the session (**spring.session.timeout**). If you don’t specify any, the default is 30 minutes.
+```
+spring:
+  session:
+    store-type: redis
+    timeout: 10m
+    redis:
+      namespace: polar:edge
+```
