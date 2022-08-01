@@ -157,3 +157,45 @@ The **--port-forward** flag will set up automatic port forwarding to your local 
 Unless it’s not available, Skaffold will use the port you defined for the Service object.
 When you’re done working with the application, you can terminate the Skaffold process (Ctrl+C), and all the Kubernetes objects will get deleted automatically.
 Another option for running Skaffold is using the **skaffold run** command. skaffold run It works like the development mode, but it doesn’t provide live-reload nor clean up when it terminates. It’s typically used in a CI/CD pipeline.
+
+# How to manage external access to applications running in a Kubernetes cluster using the Ingress API
+
+## Understanding Ingress API and Ingress Controller
+An **Ingress** is an object that "manages external access to the services in a cluster, typically HTTP. Ingress may provide load balancing, SSL termination and name-based virtual hosting".
+In production, an Ingress object is usually enhanced to perform load balancing, make the system reachable through a specific URL, and manage the SSL termination to expose the application services via HTTPS. The cloud platform or dedicated tools are used to achieve that.
+What about local environments? When you run your applications in a local Kubernetes cluster, you need to enable the Ingress support in kind and define an external HTTP port through which you want to manage access to the services in the cluster. In the repository accompanying this book, you can find an updated kind-config.yml file that enables Ingress support and makes the cluster accessible via port 80 of your localhost.
+Ingress objects alone don’t accomplish anything by themselves. They are just a definition of routing rules. The actual component that enforces those rules and routes traffic from outside the cluster to the applications inside is the
+**Ingress Controller**.
+Ingress Controllers are applications usually built using reverse proxies like NGINX, HAProxy, or Envoy. Since multiple implementations are available, there’s no Ingress Controller included in the core Kubernetes distribution, but it’s up to you to install one.
+
+### Working with Ingress objects
+Using an Ingress resource, we can decouple infrastructure and network configuration.
+**Expose Edge Service outside the cluster via an Ingress (ingress.yml)**
+```
+apiVersion: networking.k8s.io/v1        (1)
+kind: Ingress                           (2)
+metadata:
+  name: polar-ingress                   (3)
+spec:
+  rules:
+    - http:                             (4)
+        paths:
+          - path: /                     (5)
+            pathType: Prefix
+            backend:
+              service:
+                name: edge-service      (6)
+                port: 
+                  number: 80            (7)
+```
+(1) The API version for Ingress objects.
+(1) The type of object to create.
+(1) The name of the Ingress.
+(1) Ingress rules for HTTP traffic.
+(1) A default rule for all requests.
+(1) The name of the Service object where to forward traffic.
+(1) The port number for the Service where to forward traffic.
+
+* Build the image.
+* kind load docker-image <your_dockerhub_username>/edge-service:0.0.1-SNAPSHOT
+* kubectl apply -f k8s

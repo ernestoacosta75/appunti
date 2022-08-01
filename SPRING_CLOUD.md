@@ -1033,3 +1033,30 @@ spring:
     redis:
       namespace: polar:edge
 ```
+
+# Event-driven applications and functions
+Event-driven architectures describe distributed systems that interact by **producing** and **consuming** events. The interaction is asynchronous, solving the problem of temporal coupling.
+
+## Event-driven architectures
+In an event-driven architecture, we identify event producers and event consumers. A producer is a component detecting the event and sending a notification. A consumer is a component getting notified when a specific event occurs.
+Producers and consumers don’t know each other and work independently. A producer sends an event notification by publishing a message to a channel operated by an event broker responsible for collecting and routing messages to consumers. A consumer is notified by the broker when an event occurs and can act upon it.
+
+### Understanding the event-driven models
+Event-driven architectures can be based on two main models:
+* **Pub/Sub (Publisher/Subscriber)**. This model is based on subscriptions. Producers publish events that are sent to 
+  all subscribers to be consumed. Events cannot be replayed after being received, so new consumers joining will not be able to get the past events.
+* **Event Streaming**. In this model, events are written to a log. Producers publish events as they occur, and they are 
+  all stored in an ordered fashion. Consumers don’t subscribe to them, but they can read from any part of the event stream. In this model, events can be replayed. Clients can join at any time and receive all the past events.
+
+Apache Kafka is a powerful platform for event stream processing.
+
+# Functions with Spring Cloud Function
+Why use functions in the first place? They are a simple, uniform, and portable programming model that is a perfect fit for event-driven architectures, inherently based on these concepts.
+
+Spring Cloud Function promotes the implementation of business logic via functions based on the
+standard interfaces introduced by Java 8: Supplier, Function, and Consumer.
+Supplier. A supplier is a function with only output, no input. It’s also known as a
+producer, publisher, or source.
+Function. A function has both input and output. It’s also known as a processor.
+Consumer. A consumer is a function with input but no output. It’s also known as a
+subscriber or sink.
