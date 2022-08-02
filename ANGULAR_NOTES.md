@@ -1,3 +1,13 @@
+# Install Ramda for Angular with npm
+```
+npm i -D @types/ramda ramda
+```
+
+# How to update each dependency in package.json to the latest version?
+```
+$ npx npm-check-updates -u
+$ npm install 
+```
 # Angular HTTP - Core HTTP API Setup & Usage
 
 ## Inject and use the Http client library
