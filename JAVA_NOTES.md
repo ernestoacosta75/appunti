@@ -193,3 +193,43 @@ We have following components on which our design depends:
 * The model which is transferred from one layer to the other.
 * The View which is responsible to show the data present in the application.
 * The controller is responsible to accept a request from a user, modify a model and send it to the view which is shown to the user.
+
+# File handling with NIO
+## Read files with Java 8 using Files.lines()
+JDK8 offers the lines() method inside the Files class. It returns a Stream of String elements.
+Let’s look at an example of how to read data into bytes and decode it using UTF-8 charset.
+The following code reads the file using the new Files.lines():
+```
+@Test
+public void givenFilePath_whenUsingFilesLines_thenFileData() {
+    String expectedData = "Hello, world!";
+         
+    Path path = Paths.get(getClass().getClassLoader()
+      .getResource("fileTest.txt").toURI());
+         
+    Stream<String> lines = Files.lines(path);
+    String data = lines.collect(Collectors.joining("\n"));
+    lines.close();
+         
+    Assert.assertEquals(expectedData, data.trim());
+}
+```
+
+## Create directory
+We can use the NIO **Files.createDirectory** to create a directory or **Files.createDirectories** to create a directory including all nonexistent parent directories.
+```
+try {
+
+    Path path = Paths.get("/home/mkyong/a/b/c/");
+
+    //java.nio.file.Files;
+    Files.createDirectories(path);
+
+    System.out.println("Directory is created!");
+
+  } catch (IOException e) {
+
+    System.err.println("Failed to create directory!" + e.getMessage());
+
+  }
+```

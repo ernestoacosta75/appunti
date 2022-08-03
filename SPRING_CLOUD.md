@@ -1,47 +1,12 @@
 # STEPS TO FOLLOW FOR CLOUD DEVELOPMENT
 1. Configure graceful shutdown and grace period for the application.
-2. Configure the Cloud Native Buildpacks integration and package the application as a container.
-3. Update your Docker Compose file to run the microservice as a container.
-4. Bootstrap a deployment pipeline for Config Service by implementing the workflow for the commit stage using GitHub Actions.
+2. Add Spring Cloud Config Client to Order Service to make it fetch configuration data from Config Service.
+3. Configure the Cloud Native Buildpacks integration, containerize the application, and define both CI and CD pipelines
+4. Update your Docker Compose file to run the microservice as a container.
 5. Write the Deployment and Service manifests for deploying the microservice to a Kubernetes cluster.
 6. Update the commit stage of the deployment pipeline for the microservice to validate the Kubernetes manifests.
-7. Configure Tilt to automate the Config Service deployment to your local Kubernetes cluster bootstrapped with 
-   minikube.
-   Tilt (tilt.dev) aims at providing a good developer experience when working on Kubernetes. It’s an open-source tool that offers features to build, deploy, and manage containerized workloads in your local environment. We’ll use some of its basic features to automate a development workflow for a specific application, but Tilt can also help you orchestrate the deployment of multiple applications and services in a centralized way.
-   The goal is to design a workflow that will automate the following steps for you:
-   * packaging a Spring Boot application as a container image using Cloud Native Buildpacks;
-   * uploading the image to a Kubernetes cluster (in our case, the one created with minikube);
-   * applying all the Kubernetes objects declared in the YAML manifests;
-   * enabling the port-forward functionality to access applications from your local computer;
-   * giving you easy access to the logs from the applications running on the cluster.
+7. Configure Skaffold to automate the Order Service deployment to your local Kubernetes cluster initialized with kind.
 
-    Before configuring Tilt, make sure you have a database instance up and running in your local Kubernetes
-    cluster.
-    Open a Terminal window, navigate to the kubernetes/platform/development folder in your polar-deployment repository, and run the following command to deploy PostgreSQL.
-    ```
-    kubectl apply -f services
-    ```
-    Let’s now see how to configure Tilt to establish that automated development workflow.
-    Tilt can be configured via a Tiltfile, an extensible configuration file written in Starlark (a simplified Python dialect). Go to your Catalog Service project (catalog-service) and create a file named Tiltfile (no extension) in the root folder. The file will contain three main configurations:
-    * how to build a container image (Cloud Native Buildpacks);
-    * how to deploy the application (Kubernetes YAML manifests);
-    * how to access the application (port forwarding).
-    ### Tilt configuration for Catalog Service (Tiltfile)
-    ```
-      custom_build(
-      ref = 'catalog-service',
-      command = './gradlew bootBuildImage --imageName $EXPECTED_REF',
-      deps = ['build.gradle', 'src']
-      )
-      k8s_yaml(['k8s/deployment.yml', 'k8s/service.yml'])
-      k8s_resource('catalog-service', port_forwards=['9001'])
-    ```
-
-    Open a Terminal window, navigate to the root folder of your Catalog Service project, and run the
-    following command to start Tilt.
-    ```
-      tilt up
-    ```
 
 # Deployment pipeline: Build and test
 Continuous delivery is a holistic approach for quickly, reliably, and safely delivering software. The primary pattern for adopting such an approach is the deployment pipeline, which goes from code commit to releasable software. It should be automated as much as possible and represent the only path to production.
@@ -543,3 +508,555 @@ public class Scheduler {
 
 The topic will be created automatically, but we could define the bean like we defined previously. The output would be:
 ![alt text](https://miro.medium.com/max/468/1*Ugw_bvMdDw3GpewKqvwQ3w.png "Logo Title Text 1")
+
+# Ensuring disposability: Graceful shutdown
+Gracefully shutting down means the application stops accepting new requests, completes all those still in progress, and closes any open resource like database connections.
+By default, Spring Boot stops the server immediately after receiving a termination signal (SIGTERM). You can switch to a graceful mode by configuring SIGTERM the **server.shutdown** property.
+You can also configure the **grace period**, which is how long the application is allowed to process all the pending requests. After the grace period expires, the application is terminated even if there are still pending requests. By default, the grace period is 30 seconds. You can change it through the **spring.lifecycle.timeout-per-shutdown-phase** property.
+**application.yml**
+```
+server:
+  port: 9001
+  shutdown: graceful                    (1)
+  tomcat:
+    connection-timeout: 2s
+    threads:
+      max: 50
+      min-spare: 5
+spring:
+  application:
+    name: catalog-service
+  lifecycle:
+    timeout-per-shutdown-phase: 15s     (2)
+```
+(1) Enable graceful shutdown.
+(2) Defines a 15s grace period.
+
+## Configure a delay in Kubernetes before starting the graceful shutdown procedure (deployment.yml)
+```
+...
+spec:
+  containers:
+    - name: catalog-service
+      image: polarbookshop/catalog-service:0.0.1-SNAPSHOT
+      imagePullPolicy: Always
+      lifecycle:
+        preStop:                                            (1)
+          exec:
+            command: [ "sh", "-c", "sleep 5" ]
+```
+(1) Makes Kubernetes wait 5 seconds before sending the SIGTERM signal to the Pod.
+
+# Project Reactor: Reactive streams with Mono and Flux
+Reactive streams work according to a producer/consumer paradigm. Producers are called **publishers**. They produce data that might be eventually available. Reactor provides publishers two central APIs implementing the Producer<T> interface for objects of type <T> and used to compose asynchronous, observable data streams: Mono<T> and Flux<T>.
+* **Mono<T>** represents a single asynchronous value or empty result (0..1).
+* **Flux<T>** represents an asynchronous sequence of zero or more items (0..N).
+
+## Understanding the Spring reactive stack
+The servlet stack is based on the Servlet API and a Servlet container (e.g., Tomcat). In contrast, the reactive model is based on the Reactive Streams API (implemented by Project Reactor) and either Netty or a Servlet container (version 3.1 as a minimum). Both stacks let you build RESTful applications using either classes annotated as @RestControlleror functional endpoints called Router Functions.
+The servlet stack uses Spring MVC, while the reactive stack uses Spring WebFlux.
+
+## MANAGING DATABASE SCHEMAS WITH FLYWAY
+Spring Data R2DBC supports initializing data sources through **schema.sql** and **data.sql** files, just like Spring Data JDBC.
+Flyway doesn’t support R2DBC yet, so you need to provide a JDBC driver to communicate with the database. The Flyway migration tasks are only run at application startup and in a single thread. Using a non-reactive communication approach for this one case doesn’t impact the overall application scalability and efficiency.
+```
+...
+  r2dbc:
+    username: ${DB_USERNAME:order_user}
+    password: ${DB_PASSWORD:TXlzcWwzMjFPcmRlcg==}
+    url: r2dbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:polardb_catalog}?useSSL=false&allowPublicKeyRetrieval=true
+    pool:
+      max-create-connection-time: 2s
+      initial-size: 5
+      max-size: 10
+  flyway:
+    user: ${spring.r2dbc.username}
+    password: ${spring.r2dbc.password}
+    url: ${FLYWAY_URI}
+    table: order_service_flyway_schema_history
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:mysqlmigrations
+```
+## Exposing a REST API with Spring WebFlux
+There are two options for defining RESTful endpoints in a Spring WebFlux application: @RestController classes or functional beans (i.e., Router Functions).
+
+### Reactive clients with Spring WebClient
+**WebClient** is the modern alternative to **RestTemplate**. It provides blocking and non-blocking I/O, making it the perfect candidate for both imperative and reactive applications. It can be operated through a functional-style, fluent API that lets you configure any aspect of the HTTP interaction.
+
+### Implementing REST clients with WebClient
+1) **Configure a WebClient bean to call Catalog Service**
+```
+@Configuration
+public class ClientConfig {
+  @Bean
+  WebClient webClient(ClientProperties clientProperties, 
+      WebClient.Builder webClientBuilder) {                       (1)
+    return webClientBuilder
+      .baseUrl(clientProperties.catalogServiceUrl().toString())   (2)
+      .build();
+  }
+}
+```
+(1) An object auto-configured by Spring Boot to build WebClient beans.
+(2) Configures the WebClient base URL to the Catalog Service URL defined as a custom property.
+
+2) Next, create a reactive REST client where you are going to use the WebClient bean to send HTTP calls to the     
+   endpoint exposed.
+```
+@Component
+public class BookClient {
+  private static final String BOOKS_ROOT_API = "/books/";   (1)
+  private final WebClient webClient;
+
+  public BookClient(WebClient webClient) {
+    this.webClient = webClient;                             (2)
+  }
+
+  public Mono<Book> getBookByIsbn(String isbn) {
+    return webClient
+      .get()                                                (3)
+      .uri(BOOKS_ROOT_API + isbn)                           (4)
+      .retrieve()                                           (5)
+      .bodyToMono(Book.class);                              (6)  
+  }
+}
+```
+(1) The root endpoint exposed by Catalog Service to manage books.
+(2) A WebClient bean as configured previously.
+(3) The request should use the GET method.
+(4) The target URI of the request is /books/{isbn}.
+(5) Sends the request and retrieves the response.
+(6) Returns the retrieved object as "Mono<Book>".
+
+### Resilient applications with Reactive Spring
+The goal is to keep the system available without the user noticing. In the worst-case scenario, it could have degraded functionality, but it should still be available.
+The integration point between the microservices will be done using Reactive Spring to configure timeouts, retries, and fallbacks.
+
+#### Timeouts
+Timeouts (also called ) are a simple, yet effective tool time limiters to preserve the responsiveness of your application in case a response is not received within a reasonable time period.
+**Defining a timeout for WebClient**
+Project Reactor provides a operator for defining a time limit timeout() for completing an operation. You can chain it with the result of the WebClient call to continue the reactive stream.
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2));      (1)
+}
+```
+(1) Sets a timeout for the GET request to 2 seconds.
+
+Instead of throwing an exception when the timeout expires, you have the chance to provide a fallback behavior. Considering that Order Service can’t accept an order if the book availability is not verified, you might think of returning an empty result so that the order will be rejected. You can define a reactive empty result using Mono.empty().
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2))   (1)
+}
+```
+(1) Sets a timeout for the GET request to 2 seconds.
+
+Instead of throwing an exception when the timeout expires, you have the chance to provide a fallback behavior. You
+can define a reactive empty result using Mono.empty().
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2), Mono.empty())   (1)
+}
+```
+(1) The fallback returns an empty "Mono" object.
+
+You should carefully design a time-limiting strategy for all the integration points in your system to meet your software SLAs and guarantee a good user experience.
+
+#### Retries
+When a service downstream doesn’t respond within a specific time limit or replies with a server error related to its momentary inability to process the request, you can configure your client to try it again.
+A better approach is using an **exponential backoff** to perform each retry attempt with a growing delay. By waiting for more and more time between one attempt and the next, it’s more likely the backing service has had the time to recover and become responsive again. The strategy for computing the delay can be configured.
+For instance: each retry attempt’s delay is computed as the number of attempts multiplied by 100ms (the initial backoff value).
+
+##### DEFINING RETRIES FOR WEBCLIENT
+Project Reactor provides a retryWhen() operator to retry an operation when it fails. **The position where you apply it to the reactive stream matters**.
+* Placing the **retryWhen()** operator **after** timeout() means that the timeout is applied to each retry attempt.
+* Placing the **retryWhen()** operator **before** timeout() means that the timeout is applied to the overall operation 
+  (that is, the whole sequence of initial request and retries has to happen within the given time limit).
+
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2), Mono.empty())
+    .retryWhen(Retry.backoff(3, Duration.ofMillis(100)));   (1)
+}
+```
+(1) Exponential backoff is used as the retry strategy. 3 attempts allowed and 100ms initial backoff.  
+
+##### UNDERSTANDING HOW TO USE RETRIES EFFECTIVELY
+* Use them wisely.
+* You shouldn’t retry non-idempotent requests, or you’ll risk generating inconsistent states.
+* When retries are configured in a flow where the user is involved, remember to balance resilience and user experience. 
+  You don’t want users to wait too much while retrying the request behind the scenes. If you can’t avoid that, make sure you inform the users and give them feedback about the status of the request.
+
+#### Fallbacks and error handling
+A fallback behavior can help you limit the fault to a small area while preventing the rest of the system from misbehaving or entering a faulty state.
+You want to include fallbacks into your general strategy to make your system resilient, not just for a specific case like timeouts. A fallback function can be triggered when some errors or exceptions occur, but they’re not all the same.
+
+Project Reactor provides an operator **onErrorResume()** to define a fallback when a specific error occurs. You can add it to the reactive stream after the **timeout()** operator and before the **retryWhen()** so that if a 404 response is received, the retry operator is not triggered.
+```
+public Mono<Book> getBookByIsbn(String isbn) {
+  return webClient.get().uri(isbn)
+    .retrieve()
+    .bodyToMono(Book.class)
+    .timeout(Duration.ofSeconds(2), Mono.empty())
+    .onErrorResume(WebClientResponseException.NotFound.class, exception -> Mono.empty())  (1)
+    .retryWhen(Retry.backoff(3, Duration.ofMillis(100)));   
+}
+```
+(1) Returns an empty object when a 404 response is received.
+
+# API gateway and circuit breakers
+* How to use Spring Cloud Gateway to build an Edge Service application, implement an API gateway, and some of those 
+  cross-cutting concerns.
+* Improve the resilience of the system by configuring circuit breakers with Spring Cloud Circuit Breaker, defining rate 
+  limiters with Spring Data Redis Reactive, and using retries and timeouts.
+* How to store the web session state using Spring Session Redis, a NoSQL, in-memory data store.
+* How to manage external access to the applications running in a Kubernetes cluster relying on the Kubernetes Ingress 
+  API.
+
+Adding Edge Service to the system lets you define an API gateway to decouple the internal services from its external clients and provides you with a central place to implement cross-cutting concerns like authentication and authorization, monitoring, and resilience.
+
+Spring Cloud Gateway greatly simplifies building edge services, focusing on simplicity and productivity. Furthermore, since it’s based on a reactive stack, it can scale efficiently to handle the high workload naturally happening at the edge of a system.
+```
+server:
+  port: 9000
+  netty:
+    connection-timeout: 2s
+  shutdown: graceful
+
+spring:
+  application:
+    name: edge-service
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+```
+
+## Defining routes and predicates
+Spring Cloud Gateway provides three main building blocks:
+* **Route**. It’s identified by a unique ID, a collection of predicates deciding whether to follow the route, a URI for 
+  forwarding the request if the predicates allow, and a collection of filters applied either before or after forwarding the request downstream.
+* **Predicate**. It matches anything from the HTTP request, including path, host, headers, query parameters, cookies, 
+  and body.
+* **Filter**. It modifies an HTTP request or response before or after forwarding the request to the downstream service.
+```
+...
+spring:
+  cloud:
+    gateway:
+      routes:                                                         (1)
+        - id: catalog-route                                           (2)
+          uri: ${CATALOG_SERVICE_URL:http://localhost:9001}/books
+          predicates:
+            - Path=/books/**                                          (3)
+        - id: order-route
+          uri: ${ORDER_SERVICE_URL:http://localhost:9002}/orders      (4)
+          predicates:
+            - Path=/orders/**
+```
+(1) A list of route definitions.
+(2) The route ID.
+(3) The predicate is a path to match.
+(4) The URI value comes from an environment variable, or else the default.
+
+## Processing requests and responses through filters
+Routes and predicates alone make the application act as a proxy, but filters make Spring Cloud Gateway really powerful. Filters can run before forwarding incoming requests to a downstream application (**pre-filters**). For example, they’re used for:
+* manipulating the request headers;
+* applying rate limiting and circuit breaking;
+* defining retries and timeouts for the proxied request;
+* triggering an authentication flow with OAuth2 and OpenID Connect.
+
+Other filters can apply to outgoing responses before sending them back to the client and after being received from the downstream application (post-filters). For example, they’re used for:
+* setting security headers;
+* manipulating the response body to remove sensitive information.
+
+Spring Cloud Gateway comes bundled with many filters that you can use to perform different actions, including adding headers to a request, configuring a circuit breaker, saving the web session, retrying the request on failure, or activating a rate limiter.
+
+### USING THE RETRY FILTER
+You should use
+a backoff strategy instead. By default, the delay is computed using the formula **firstBackoff * (factor ^ n)**. If you set the **basedOnPreviousValue** parameter to **true**, the formula will be **prevBackoff * factor**.
+```
+spring:
+  cloud:
+    gateway:
+      default-filters:                                                                  (1)
+        - name: Retry                                                                   (2)
+          args:
+            retries: 3                                                                  (3)  
+            methods: GET                                                                (4)
+            series: SERVER_ERROR                                                        (5)
+            exceptions: java.io.IOException, java.util.concurrent.TimeoutException      (6)
+            backoff:                                                                    (7)  
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+```
+(1) A list of default filters.
+(2) The name of the filter.
+(3) Maximum of 3 retry attempts.
+(4) Retries only GET requests.
+(5) Retries only when 5xx errors.
+(6) Retries only when the given exceptions are thrown.
+(7) Retries with a delay computed as "firstBackoff * (factor ^ n)".
+
+**The retry pattern is useful when a downstream service is momentarily unavailable.**
+
+## Fault tolerance with Spring Cloud Circuit Breaker and Resilience4J
+The Spring Cloud Circuit Breaker project provides an abstraction for defining circuit breakers in a Spring application. Resilience4J became the preferred choice because it provides the same features offered by Hystrix and more.
+
+### Introducing circuit breakers with Spring Cloud Circuit Breaker
+**pom.xml**:
+org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4
+
+The **CircuitBreaker** filter in Spring Cloud Gateway relies on Spring Cloud CircuitBreaker Circuit Breaker to wrap a route. Being a **GatewayFilter**, you can apply it to specific routes or define it as a default filter. You can also specify an optional fallback URI to forward the request when the circuit is in an open state.
+```
+'''
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: catalog-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:9001}/books
+          predicates:
+            - Path=/books/**
+          filters:
+            - name: CircuitBreaker                                      (1)
+              args:
+                name: catalogCircuitBreaker                             (2)
+                fallbackUri: forward:/catalog-fallback                  (3)
+        - id: order-route
+          uri: ${ORDER_SERVICE_URL:http://localhost:9002}/orders
+          predicates:
+            - Path=/orders/**
+          filters:
+            - name: CircuitBreaker                                      (4)
+              args:
+                name: orderCiruitBreaker
+```
+(1) Name of the filter.
+(2) Name of the circuit breaker.
+(3) Forwards request to this URI when the circuit is open.
+(4) No fallback defined for this circuit breaker.
+
+### Configuring a circuit breaker with Resilience4J
+Yyou need to configure the circuit breakers themselves.
+You can configure circuit breakers through the properties provided by Resilience4J or via a **Customizer** bean. Since we’re using the reactive version of Resilience4J, it would be a **Customizer<ReactiveResilience4JCircuitBreakerFactory>**.
+For example, we can define circuit breakers to consider a window of 20 calls (**slidingWindowSize**). Each new call will make the window move, dropping the oldest registered call. When at least 50% of the calls in the window produced an error (**failureRateThreshold**), the circuit breaker trips, and the circuit enters the open state. After 15 seconds (**waitDurationInOpenState**), the circuit is allowed to transition to a half-open state in which 5 calls are permitted (**permittedNumberOfCallsInHalfOpenState**). If at least 50% of them result in an error, the circuit will go back to the open state. Otherwise, the circuit breaker trips to the close state.
+```
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:                                      (1)
+        slidingWindowsSize: 20                      (2)
+        failureRateThreshold: 50                    (3)
+        waitDurationInOpenState: 15000              (4)
+        permittedNumberOfCallsInHalfOpenState: 5    (5)
+  timelimiter:
+    configs:
+      default:                                      (6)
+        timeoutDuration: 5s                         (7)
+```
+(1) Default configuration bean for all circuit breakers.
+(2) The size of the sliding window used to record the outcome of calls when the circuit is closed.
+(3) When the failure rate is above the threshold, the circuit becomes open.
+(4) Waiting time before moving from open to half-open (ms).
+(5) Number of permitted calls when the circuit is half-open.
+(6) Default configuration bean for all time limiters.
+(7) Configures a timeout (seconds).
+
+We configure both the circuit breaker and a time limiter, a required component when using the Resilience4J implementation of Spring Cloud Circuit Breaker. The timeout configured via Resilience4J will take precedence over the response timeout for the Netty HTTP client (**spring.cloud.gateway.httpclient.response-timeout**).
+
+### Defining fallback REST APIs with Spring WebFlux
+WebFlux supports defining REST endpoints both using @RestController classes and Router Functions. Let’s use the functional way for declaring the fallback endpoints.
+Functional endpoints in Spring WebFlux are defined as routes in a **RouterFunction<ServerResponse>** bean, using the fluent API provided by **RouterFunctions**. For each route, you need to define the endpoint URL, a method, and a handler.
+```
+@Configuration
+public class WebEndpoints {
+
+    @Bean                                                                                   (1)
+    public RouterFunction<ServerResponse> routerFunction() {
+        return RouterFunctions.route()                                                      (2)
+                .GET("/catalog-fallback", request ->                                        (3)
+                        ServerResponse.ok()
+                                .body(Mono.just(""), String.class))
+                .POST("/catalog-fallback", request ->                                       (4)
+                        ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).build())
+                .build();                                                                   (5)
+    }
+}
+```
+(1) Functional REST endpoints are defined in a bean.
+(2) Offers a fluent API to build routes.
+(3) Fallback response used to handle the GET endpoint.
+(4) Fallback response used to handle the POST endpoint.
+(5) Builds the functional endpoints.
+
+In a real scenario, you might want to adopt different fallback strategies depending on the context, including throwing a custom exception to be handled from the client or returning the last value saved in cache for the original request.
+
+### Combining circuit breakers, retries, and time limiters
+When you combine multiple resilience patterns, the sequence in which they are applied is fundamental. Spring Cloud Gateway takes care of applying the **TimeLimiter** first (or the timeout on the HTTP client), then the **CircuitBreaker** filter, and finally **Retry**.
+![Combining circuit breakers, retries, and time limiters](combining_resilience_patterns.JPG)
+
+You can verify the result of applying these patterns to Edge Service using a tool like Apache Benchmark (httpd.apache.org/docs/2.4/programs/ab.html).
+Make sure microservices are not running. Then, enable debug logging for Resilience4J to follow the state transitions of the circuit breaker. At the end of your application.yml file, add the following configuration.
+```
+logging:
+  level:
+    io.github.resilience4j: DEBUG
+```
+
+Next, build and run Edge Service. Since all downstream services are not running (if they are, you should stop them), all the requests sent to them from Edge Service will  result in an error.
+```
+ab -n 21 -c 1 -m POST http://localhost:9000/orders
+```
+
+The circuit breaker is configured to trip to the open state when at least 50% of the calls in a 20-sized time window fails. Since you have just started the application, the circuit will transition to the open state after 20 requests. In the application logs, you can analyze how the requests have been handled. All requests fail, so the circuit breaker registers an ERROR event.
+```
+No Consumers: Event ERROR not published
+```
+
+At the 20th request, a FAILURE_RATE_EXCEEDED event is recorded because it exceeded the failure threshold. That will result in a STATE_TRANSITION event that will open the circuit.
+```
+No Consumers: Event ERROR not published
+No Consumers: Event FAILURE_RATE_EXCEEDED not published
+No Consumers: Event STATE_TRANSITION not published
+```
+
+The 21st request will not even try contacting Order Service: the circuit is open, so it cannot go through. A NOT_PERMITTED event is registered to signal why the request failed.
+```
+No Consumers: Event NOT_PERMITTED not published
+```
+
+## Rate limiting with Spring Cloud Gateway and Redis
+Rate limiting is a pattern used to control the rate of traffic sent to or received from an application, helping to make your system more resilient and robust. In the context of HTTP interactions, you can apply this pattern to control outgoing or incoming network traffic using client-side and server-side rate limiters, respectively.
+
+**Client-side rate limiters** is a useful pattern to adopt when third-party organizations like cloud providers manage and offer the downstream service. You want to avoid incurring extra costs for having sent more requests than the ones allowed by your subscription. In case of pay-per-use services, it helps prevent unexpected expenses.
+
+**Server-side rate limiters** are for constraining the number of requests received by an upstream service (or client) in a given period. This pattern is handy when implemented in an API gateway to protect the whole system from overloading or DoS attacks.
+
+### How to use the server-side rate limiter pattern using Spring Cloud Gateway and Spring Data Redis Reactive
+The solution is using a dedicated data service to store the rate-limiting state and make it available to all the application replicas. Enter Redis.
+Redis is an in-memory store that is commonly used as a cache, message broker, or database. In Edge Service, you’re going to use it as the data service backing the request limiter implementation provided by Spring Cloud Gateway. The Spring Data Reactive Redis project provides the integration between a Spring Boot application and Redis.
+Running it as a container:
+```
+  polar-redis:
+      image: "redis:7.0"
+      container_name: "polar-redis"
+      ports:
+        - '6379:6379'   
+```
+
+### Integrating Spring with Redis
+**pom.xml** : org.springframework.boot:spring-boot-starter-data-redis-reactive
+
+Then, in the application.yml file, you can configure the Redis integration through the properties provided by Spring Boot. Besides **spring.redis.host** and **spring.redis.port** for defining where to reach Redis, you can also specify connection and read timeouts using **spring.redis.connect-timeout** and **spring.redis.timeout** respectively.
+```
+spring:
+  redis:
+    connec-timeout: 2s              (1)
+    host: ${REDIS_HOST:localhost}   (2)
+    port: 6379                      (3)
+    timeout: 1s                     (4)
+```
+(1) Time limit for a connection to be established.
+(2) Default Redis host.
+(3) Default Redis port.
+(4) Time limit for a response to be received.
+
+### Using the RequestRateLimiter filter with Redis
+Depending on the requirements, you can configure the **RequestRateLimiter** filter for specific routes or as a default filter.
+The implementation of **RequestRateLimiter** on Redis is based on the **token bucket algorithm**.
+Each user is assigned a bucket inside which tokens are dripped overtime at a specific rate (**replenish rate**). Each bucket has a maximum capacity (**burst capacity**). When a user makes a request, a token is removed from its bucket. When there are no more tokens left, the request is not permitted, and the user will have to wait that more tokens are dripped into its bucket.
+```
+spring:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 10    (1)
+            redis-rate-limiter.burstCapacity: 20    (2)
+            redis-rate-limiter.requestedTokens: 1   (3)
+```
+(1) Number of tokens dripped in the bucket each second.
+(2) Allows request bursts of up to 20 requests
+(3) How many tokens a request costs.
+
+The **RequestRateLimiter** filter relies on a **KeyResolver** bean to derive the bucket to use per request. By default, it uses the currently authenticated user in Spring Security. You can define your own **KeyResolver** bean and make it return a constant value (for example, ANONYMOUS) so that any request will be mapped to the same bucket.
+```
+@Configuration
+public class RateLimiterConfig {
+
+    @Bean
+    public KeyResolver keyResolver() {              (1)
+        return exchange -> Mono.just("ANONYMOUS");
+    }
+}
+```
+(1) Rate limiting is applied to requests using a constant key.
+
+Testing using Apache Benchmark:
+```
+ab -n 30 -c 30 http://localhost:9000/books
+```
+
+**-n**: number of requests
+**-c**: number of requests to be runned concurrently
+
+## Distributed session management with Redis
+Edge Service is not dealing with any business entity to store, but it still needs a stateful service (Redis) to store the state related to the **RequestRateLimiter** filter. When Edge Service is replicated, it’s important to keep track of how many requests are left before exceeding the threshold. Using Redis, the rate limiter functionality is guaranteed consistently and safely.
+
+### Handling sessions with Spring Session Data Redis
+**pom.xml**: org.springframework.session:spring-session-data-redis
+
+* Keep session data in an external service so that they survive the application shutdown.
+* Another fundamental reason for using a distributed session store is that you usually have multiple instances for the 
+  same application. You want them to access the same session data to provide a seamless experience to the user.
+
+Instruct Spring Boot to use Redis for session management (**spring.session.store-type**) and define a unique namespace to prefix all session data coming from Edge Service (**spring.session.redis.namespace**). You can also define a timeout for the session (**spring.session.timeout**). If you don’t specify any, the default is 30 minutes.
+```
+spring:
+  session:
+    store-type: redis
+    timeout: 10m
+    redis:
+      namespace: polar:edge
+```
+
+# Event-driven applications and functions
+Event-driven architectures describe distributed systems that interact by **producing** and **consuming** events. The interaction is asynchronous, solving the problem of temporal coupling.
+
+## Event-driven architectures
+In an event-driven architecture, we identify event producers and event consumers. A producer is a component detecting the event and sending a notification. A consumer is a component getting notified when a specific event occurs.
+Producers and consumers don’t know each other and work independently. A producer sends an event notification by publishing a message to a channel operated by an event broker responsible for collecting and routing messages to consumers. A consumer is notified by the broker when an event occurs and can act upon it.
+
+### Understanding the event-driven models
+Event-driven architectures can be based on two main models:
+* **Pub/Sub (Publisher/Subscriber)**. This model is based on subscriptions. Producers publish events that are sent to 
+  all subscribers to be consumed. Events cannot be replayed after being received, so new consumers joining will not be able to get the past events.
+* **Event Streaming**. In this model, events are written to a log. Producers publish events as they occur, and they are 
+  all stored in an ordered fashion. Consumers don’t subscribe to them, but they can read from any part of the event stream. In this model, events can be replayed. Clients can join at any time and receive all the past events.
+
+Apache Kafka is a powerful platform for event stream processing.
+
+# Functions with Spring Cloud Function
+Why use functions in the first place? They are a simple, uniform, and portable programming model that is a perfect fit for event-driven architectures, inherently based on these concepts.
+
+Spring Cloud Function promotes the implementation of business logic via functions based on the
+standard interfaces introduced by Java 8: Supplier, Function, and Consumer.
+Supplier. A supplier is a function with only output, no input. It’s also known as a
+producer, publisher, or source.
+Function. A function has both input and output. It’s also known as a processor.
+Consumer. A consumer is a function with input but no output. It’s also known as a
+subscriber or sink.
