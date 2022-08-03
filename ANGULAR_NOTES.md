@@ -151,3 +151,31 @@ ng serve
 * We can implement a Http solution using Promises (synchronous code).
 * **CORS** is an HTTP header- based mechanism that allows the server to indicate any other domain, scheme, 
   or port origins and enables them to be loaded.
+
+# JSONP with Observables
+**JSONP** is a method of performing API requests which go around the issue of CORS.
+
+This is a security measure implemented in all browsers that stops you from using an API in a potentially unsolicited way and most APIs, including the iTunes API, are protected by it.
+
+JSONP is a solution to this problem, it treats the API as if it was a JavaScript file. It dynamically adds
+the HTTP request as if it were a script tag in our our HTML.
+For instance:
+```
+https://itunes.apple.com/search?term=love&media=music&limit=20
+```
+it will be added as:
+```
+<script src="https://itunes.apple.com/search?term=love&media=music&limit=20"></script>
+```
+The browser then just downloads the JavaScript file and since browsers don’t check for CORS when downloading JavaScript files it a works around the issue of CORS.
+
+That’s JSONP in a nutshell.
+1. We treat the API as a JavaScript file.
+2. The API wraps the JSON response in a function who’s name we define.
+3. When the browser downloads the fake API script it runs it, it calls the function passing it the JSON data.
+
+**We can only use JSONP when**:
+1. The API itself **supports JSONP**. It needs to return the JSON response wrapped in a function and it usually lets us pass in the function name we want it to use as one of the query params.
+2. **We can only use it for GET requests**, it doesn’t work for PUT/POST/DELETE and so on.
+
+## How to make JSONP requests in Angular
