@@ -1,24 +1,31 @@
 # Intent
+
 **Bridge** is a structural design pattern that lets you split a large class or a set of closely related classes into two separate hierarchies—abstraction and implementation—which can be developed independently of each other.
+
 <center><src="https://refactoring.guru/images/patterns/content/bridge/bridge-2x.png"></center>
 
 # Problem
+
 Abstraction? Implementation? Sound scary? Stay calm and let’s consider a simple example.
 
 Say you have a geometric **Shape** class with a pair of subclasses: **Circle** and **Square**. You want to extend this class hierarchy to incorporate colors, so you plan to create **Red** and **Blue** shape subclasses. However, since you already have two subclasses, you’ll need to create four class combinations such as **BlueCircle** and **RedSquare**.
+
 <center><src="https://refactoring.guru/images/patterns/diagrams/bridge/problem-en-2x.png"></center>
 
 Adding new shape types and colors to the hierarchy will grow it exponentially. For example, to add a triangle shape you’d need to introduce two subclasses, one for each color. And after that, adding a new color would require creating three subclasses, one for each shape type. The further we go, the worse it becomes.
 
 # Solution
+
 This problem occurs because we’re trying to extend the shape classes in two independent dimensions: by form and by color. That’s a very common issue with class inheritance.
 
 The Bridge pattern attempts to solve this problem by switching from inheritance to the object composition. What this means is that you extract one of the dimensions into a separate class hierarchy, so that the original classes will reference an object of the new hierarchy, instead of having all of its state and behaviors within one class.
+
 <center><src="https://refactoring.guru/images/patterns/diagrams/bridge/solution-en-2x.png"></center>
 
 Following this approach, we can extract the color-related code into its own class with two subclasses: **Red** and **Blue**. The **Shape** class then gets a reference field pointing to one of the color objects. Now the shape can delegate any color-related work to the linked color object. That reference will act as a bridge between the **Shape** and **Color** classes. From now on, adding new colors won’t require changing the shape hierarchy, and vice versa.
 
 ## Abstraction and Implementation
+
 The GoF book  introduces the terms *Abstraction* and *Implementation* as part of the Bridge definition. In my opinion, the terms sound too academic and make the pattern seem more complicated than it really is. Having read the simple example with shapes and colors, let’s decipher the meaning behind the GoF book’s scary words.
 
 **Abstraction** (also called **interface**) is a high-level control layer for some entity. This layer isn’t supposed to do any real work on its own. It should delegate the work to the *implementation* layer (also called **platform**).
@@ -33,6 +40,7 @@ Generally speaking, you can extend such an app in two independent directions:
 * Support several different APIs (for example, to be able to launch the app under Windows, Linux, and macOS).
 
 In a worst-case scenario, this app might look like a giant spaghetti bowl, where hundreds of conditionals connect different types of GUI with various APIs all over the code.
+
 <center><src="https://refactoring.guru/images/patterns/content/bridge/bridge-3-en-2x.png"></center>
 
 You can bring order to this chaos by extracting the code related to specific interface-platform combinations into separate classes. However, soon you’ll discover that there are lots of these classes. The class hierarchy will grow exponentially because adding a new GUI or supporting a different API would require creating more and more classes.
@@ -49,17 +57,20 @@ The abstraction object controls the appearance of the app, delegating the actual
 As a result, you can change the GUI classes without touching the API-related classes. Moreover, adding support for another operating system only requires creating a subclass in the implementation hierarchy.
 
 # Structure
+
 <center><src="https://refactoring.guru/images/patterns/diagrams/bridge/structure-en-2x.png"></center>
 
 1. The **Abstraction** provides high-level control logic. It relies on the implementation object to do the actual low-level work.
-2. The **Implementation** declares the interface that’s common for all concrete implementations. An abstraction can only communicate with an implementation object via methods that are 
+2. The **Implementation** declares the interface that’s common for all concrete implementations. An abstraction can only communicate with an implementation object via methods that are
    declared here.
    The abstraction may list the same methods as the implementation, but usually the abstraction declares some complex behaviors that rely on a wide variety of primitive operations declared by the implementation.
 3. **Concrete Implementations** contain platform-specific code.
 4. **Refined Abstractions** provide variants of control logic. Like their parent, they work with different implementations via the general implementation interface.
 
 # Pseudocode
+
 This example illustrates how the **Bridge** pattern can help divide the monolithic code of an app that manages devices and their remote controls. The **Device** classes act as the implementation, whereas the **Remotes** act as the abstraction.
+
 <center><src="https://refactoring.guru/images/patterns/diagrams/bridge/example-en-2x.png"></center>
 
 The base remote control class declares a reference field that links it with a device object. All remotes work with the devices via the general device interface, which lets the same remote support multiple device types.
@@ -67,6 +78,7 @@ The base remote control class declares a reference field that links it with a de
 You can develop the remote control classes independently from the device classes. All that’s needed is to create a new remote subclass. For example, a basic remote control might only have two buttons, but you could extend it with additional features, such as an extra battery or a touchscreen.
 
 The client code links the desired type of remote control with a specific device object via the remote’s constructor.
+
 ```
 // The "abstraction" defines the interface for the "control"
 // part of the two class hierarchies. It maintains a reference
@@ -132,6 +144,7 @@ remote = new AdvancedRemoteControl(radio)
 ```
 
 # Applicability
+
 **Use the Bridge pattern when you want to divide and organize a monolithic class that has several variants of some functionality (for example, if the class can work with various database servers).**
 
  The bigger a class becomes, the harder it is to figure out how it works, and the longer it takes to make a change. The changes made to one of the variations of functionality may require making changes across the whole class, which often results in making errors or not addressing some critical side effects.
@@ -149,6 +162,7 @@ remote = new AdvancedRemoteControl(radio)
  By the way, this last item is the main reason why so many people confuse the Bridge with the Strategy pattern. Remember that a pattern is more than just a certain way to structure your classes. It may also communicate intent and a problem being addressed.
 
 # How to Implement
+
 1. Identify the orthogonal dimensions in your classes. These independent concepts could be: abstraction/platform, domain/infrastructure, front-end/back-end, or interface/implementation.
 
 2. See what operations the client needs and define them in the base abstraction class.
@@ -161,15 +175,18 @@ remote = new AdvancedRemoteControl(radio)
 
 6. If you have several variants of high-level logic, create refined abstractions for each variant by extending the base abstraction class.
 
-7. The client code should pass an implementation object to the abstraction’s constructor to associate one with the other. After that, the client can forget about the implementation and work 
+7. The client code should pass an implementation object to the abstraction’s constructor to associate one with the other. After that, the client can forget about the implementation and work
    only with the abstraction object.
 
 # Pros and Cons
+
 **Pros**
+
 * You can create platform-independent classes and apps.
 * The client code works with high-level abstractions. It isn’t exposed to the platform details.
 * *Open/Closed Principle*. You can introduce new abstractions and implementations independently from each other.
 * *Single Responsibility Principle*. You can focus on high-level logic in the abstraction and on platform details in the implementation.
 
 **Cons**
+
 * You might make the code more complicated by applying the pattern to a highly cohesive class.
