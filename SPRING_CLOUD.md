@@ -739,15 +739,10 @@ java -jar \
 target/spring-cloud-stream-kafka-communication-0.0.1-SNAPSHOT.jar
 ```
 
-```{r, echo=FALSE}
-# Define variable containing url
-url <- "https://refactorfirst.com/static/images/2021/spring-cloud-stream-kafka/spring-cloud-stream-kafka-log.png?imwidth=1920"
-```
-## Some cat!
-<center><img src="`r url`"></center>
+{r echo = FALSE, results = 'asis'}
+image = "https://refactorfirst.com/static/images/2021/spring-cloud-stream-kafka/spring-cloud-stream-kafka-log.png?imwidth=1920"
+cat(paste0('<center><img src="', image,  '"></center>')) 
 
-## Alternatively...
-![](`r url`)
 
 In the Logs, you can see the consumer is getting messages from the producer which we created using functional programming, and the producer which is using the stream bridge to send the messages.
 
