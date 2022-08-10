@@ -739,10 +739,7 @@ java -jar \
 target/spring-cloud-stream-kafka-communication-0.0.1-SNAPSHOT.jar
 ```
 
-{r echo = FALSE, results = 'asis'}
-image = "https://refactorfirst.com/static/images/2021/spring-cloud-stream-kafka/spring-cloud-stream-kafka-log.png?imwidth=1920"
-cat(paste0('<center><img src="', image,  '"></center>')) 
-
+<center><src="https://refactorfirst.com/static/images/2021/spring-cloud-stream-kafka/spring-cloud-stream-kafka-log.png?imwidth=1920"></center>
 
 In the Logs, you can see the consumer is getting messages from the producer which we created using functional programming, and the producer which is using the stream bridge to send the messages.
 
