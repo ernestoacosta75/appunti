@@ -46,6 +46,7 @@ This implementation uses the object composition principle: the adapter implement
 
 ## Class adapter
 This implementation uses inheritance: the adapter inherits interfaces from both objects at the same time. Note that this approach can only be implemented in programming languages that support multiple inheritance, such as C++.
+
 <center><src="https://refactoring.guru/images/patterns/diagrams/adapter/structure-class-adapter-2x.png"></center>
 
 1. The **Class Adapter** doesn’t need to wrap any objects because it inherits behaviors from both the client and the service. The adaptation happens within the overridden methods. The 
