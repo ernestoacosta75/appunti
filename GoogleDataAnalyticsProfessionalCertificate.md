@@ -210,3 +210,42 @@ They are:
                              orderly, logical way.
 * Data design: How you organize information.
 * Data strategy:  Managing the processes and tools used in data analysis.
+
+# WEEK 2
+
+# All about thinking analytically
+
+## Analytical thinking
+
+Identifying and defining a problem and then solving it by using data in an organized, step-by-step manner.
+The 5 key aspects of analytical thinking are:
+
+1. **Visualization**:
+   The graphical representation of information (graphs, maps, etc)
+
+2. **Strategy**:
+    Having a strategic mindset is key to staying focused and on track. Strategizing helps data analysts see what they want to achieve with the data and how they can get there.
+    Strategy also helps improve the quality and usefulness of the data we collect. By strategizing, we know all our data is valuable and can help us accomplish our goals.
+
+3. **Problem-orientation**:
+   To identify, describe, and solve problems. It's all about keeping the problem top of mind throughout the entire project.
+
+4. **Correlation**:
+   A correlation is like a relationship. Correlation does not equal causation. In other words, just because two pieces of data are both trending in the same direction, that doesn't necessarily mean they are all related.
+
+5. **Big-picture and detail-oriented thinking**:
+   Being able to see the big picture as well as the details. It's all about figuring out all of the aspects that will help you execute a plan. In other words, the pieces that make up your puzzle. 
+
+# Exploring core analytical skills
+
+
+**The Five Whys**
+
+Let's talk about some of the questions data analysts ask when they're on the hunt for a solution. Here's one that will come up a lot: What is the root cause of a problem? A root cause is the reason why a problem occurs. If we can identify and get rid of a root cause, we can prevent that problem from happening again. A simple way to wrap your head around root causes is with the process called the Five Whys. In the Five Whys you ask "why" five times to reveal the root cause. The fifth and final answer should give you some useful and sometimes surprising insights.
+
+Example:
+Let's say you wanted to make a blueberry pie but couldn't find any blueberries. You've been trying to solve a problem by asking, why can't I make a blueberry pie? The answer will be, there are no blueberries at the store. There's Why Number 1. You then ask, why were there no blueberries at the store? Then you discover that the blueberry bushes don't have enough fruit this season. That's Why Number 2. Next, you'd ask, why was there not enough fruit? This would lead to the fact that birds were eating all the berries. Why Number 3, asked and answered. Now we get to Why Number 4. Ask why a fourth time and the answer would be that, although the birds normally prefer mulberries and don't eat blueberries, the mulberry bush didn't produce fruit this season, so the birds are eating blueberries instead. Finally, we get to Why Number 5, which should reveal the root cause. A late frost damaged the mulberry bushes, so it didn't produce any fruit. You can't make a blueberry pie because of the late frost months ago. See how the Five Whys can reveal some very surprising root causes.
+
+**Gap analysis**
+
+Another question commonly asked by data analysts is, where are the gaps in our process? For this, many people will use something called gap analysis. Gap analysis lets you examine and evaluate how a process works currently in order to get where you want to be in the future. Businesses conduct gap analysis to do all kinds of things, such as improve a product or become more efficient. The general approach to gap analysis is understanding where you are now compared to where you want to be. Then you can identify the gaps that exist between the current and future state and determine how to bridge them. 
