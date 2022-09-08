@@ -51,21 +51,3 @@ enum CardinalPoints { north = 10, south = 20, east, west };
 
 int cardinal = (int)CardinalPoints.west;    // 22
 ```
-
-```
-using System;
-
-namespace Enumerations {
-    enum CardinalPoints { north, south, east, west };
-
-    public class Program {
-        static void Main(string[] args) {
-            CardinalPoints direction = CardinalPoints.north;
-
-            if(direction == CardinalPoints.north) {
-                Console.WriteLine("North direction");
-            }
-        }
-    }
-}
-```
