@@ -52,7 +52,7 @@ La variabile d'istanza nascosta dietro una Property si chiama **Backing Field**
 public class Person {
     private string name;
     private string lastName;
-    
+
     ...
 
     public string Denomination {
@@ -120,6 +120,7 @@ public class Person {
 
 Permette di usare una nuova forma sintattica per istanziare un oggetto con un numero minore di codice.
 **L'Object Initializer** permette di creare un nuovo oggetto assegnandole una serie di proprieta' (anche dei valori per i campi) purche' siano pubblici.
+
 
 **OBJECT INITIALIZER**
 Si passa da questa forma d'istanziare una classe:
