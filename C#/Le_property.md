@@ -1,6 +1,6 @@
 # Creare le Property
 
-Visto che lo scrivere dei setter e getter per tutti gli attributi di una classe e' repetitivo, C# mette a disposizione **le Property**, che sono un modo piu' compatto e anche molto piu' elegante di gestire i metodi getter e setter.
+Visto che lo scrivere dei setter e getter per tutti gli attributi di una classe e' repetitivo, C# mette a disposizione **le Property**, che sono un modo piu' compatto e anche molto piu' elegante di gestire i metodi getter e setter. Queste Property vanno a sostituire le variabili d'istanza della classe.
 
 Per implementare una Property:
 1. Introdurre la definizione stessa:
@@ -102,7 +102,7 @@ public class Person {
 a questa:
 ```
 public class Person {
-    public string Nome{ get; set; };  // Auto-implemented property
+    public string Nome{ get; set; }  // Auto-implemented property
 }
 ```
 
@@ -133,3 +133,5 @@ a questa forma:
 ```
 Person person = new Person {Name = "Mario", LastName = "Rossi"};
 ```
+
+**IMPORTANTE**: Con l'utilizzo dell'Object Initializer il costruttore che sia stato definito per la classe deve essere rimoso.
