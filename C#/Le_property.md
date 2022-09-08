@@ -115,3 +115,21 @@ public class Person {
     public string Nome{ get; set; } = "Mario";
 }
 ```
+
+# L'Object Initializer
+
+Permette di usare una nuova forma sintattica per istanziare un oggetto con un numero minore di codice.
+**L'Object Initializer** permette di creare un nuovo oggetto assegnandole una serie di proprieta' (anche dei valori per i campi) purche' siano pubblici.
+
+**OBJECT INITIALIZER**
+Si passa da questa forma d'istanziare una classe:
+```
+Person a = new Person();
+person.Name = "Mario";
+person.LastName = "Rossi";
+```
+
+a questa forma:
+```
+Person person = new Person {Name = "Mario", LastName = "Rossi"};
+```
