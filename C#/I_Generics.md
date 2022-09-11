@@ -60,3 +60,61 @@ static void Main(string[] args) {
 ```
 # Ancora sui metodi generici
 
+Si può anche specificare un segnaposto come valori di ritorno del metodo:
+
+```
+public class Printer {
+    public T toPrint<T>(T v) {
+        Console.WriteLine(v);
+        return v;
+    }
+}
+
+...
+
+static void Main(string[] args) {
+    Printer printer = new Printer();
+    int a = printer.toPrint(12);
+    string b = printer.toPrint("Mario");
+}
+```
+
+Si possono specificare più segnaposti per dei data type diferenti:
+
+```
+public class Printer {
+    public void toPrint<S,T>(S e1, T e2) {
+        Console.WriteLine($"{e1} {e2}");
+    }
+}
+
+...
+
+static void Main(string[] args) {
+    Printer printer = new Printer();
+    printer.toPrint<int, string>(12, "Mario");
+    printer.toPrint<string, char>("Susanna", 'S');
+}
+```
+
+**STESSO SEGNAPOSTO, PIÙ PARAMETRI**
+
+```
+public class Printer {
+    public void toPrint<T>(T e1, T e2) {
+        Console.WriteLine($"{e1} {e2}");
+    }
+}
+```
+
+**INVOCAZIONE CON PARAMETRI DELLO STESSO TIPO T**
+
+```
+static void Main(string[] args) {
+    Printer printer = new Printer();
+    printer.toPrint<string, string>("Mario", "Susanna");
+    printer.toPrint<int>(12, 45);
+}
+```
+
+# I tipi generici
