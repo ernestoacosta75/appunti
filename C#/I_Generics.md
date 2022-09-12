@@ -1,6 +1,7 @@
 # Introduzione
 
 In C# esistono:
+
 * Tipi generici (class, struct, interface)
 * Metodi generici
 
@@ -58,6 +59,7 @@ static void Main(string[] args) {
     printer.toPrint("Mario");
 }
 ```
+
 # Ancora sui metodi generici
 
 Si può anche specificare un segnaposto come valori di ritorno del metodo:
@@ -117,4 +119,136 @@ static void Main(string[] args) {
 }
 ```
 
-# I tipi generici
+# Definire una classe generica
+
+**UNA LISTA DI INTERI**
+
+```
+public class IntList {
+    private int[] aList;
+
+    public IntList() {
+        aList = new int[10];
+    }
+
+    public void Insert(int p_value, int p_position) {
+        if (p_position < 10) {
+           return aList[p_position];
+        }
+    }
+
+    public int Value(int p_position) {
+        if (p_position < 10) {
+           return aList[p_position];
+        } else {
+            throw new Exception();
+        }
+    }
+}
+```
+
+**UNA CLASSE GENERIC**
+
+```
+public class GenericList<T> {
+    private T[] aList;
+
+    public GenericList() {
+        aList = new T[10];
+    }
+
+    public void Insert(T p_value, int p_position) {
+        if (p_position < 10) {
+           return aList[p_position];
+        }
+    }
+
+    public T Value(int p_position) {
+        if (p_position < 10) {
+           return aList[p_position];
+        } else {
+            throw new Exception();
+        }
+    }
+}
+```
+
+# Usare una classe generica
+
+```
+...
+
+static void Main(string[] args) {
+    GenericList<string> strList = new GenericList<string>();
+    strList.Insert("Mario", 5);
+
+    GenericList<int> intList = new GenericList<int>();
+    intList.Insert(120, 3);
+
+    Console.WriteLine(strList.Value(5));  // "Mario"
+    Console.WriteLine(intList.Value(3));  // 120
+}
+```
+
+# Valori predefiniti
+
+Sono i valori che servono ad inizzializare correttamente i tipi generici.
+
+Per farlo, C# mette a disposizione un operatore particolare che si chiama **default**. Questo operatore segue delle regole ben precise:
+* *Reference Type T*, **default(T)** vale **null**
+* *Valori numerici*, **default(T)** restituisce **0**
+* *Valori struct*, **default(T)** inizzializa ogni membro con **null** o **0**
+
+```
+public class MyGenClass<T> {
+    private T element;
+
+    public MyGenClass() {
+        element = default(T);
+    }
+
+    // ...
+}
+```
+
+# I type constraint
+
+I **type constraint** permettono di aggiungere dei vincoli ai tipi generici.
+Questi vincoli sono delle regole che in qualche modo, riducono la liberta' che abbiamo nell'utilizzare un generic.
+
+**LA KEYWORD where**
+
+Deve essere specificate dopo il nome della classe generica:
+
+```
+class GenClass<T> where T: MyClass   // Questo tipo T dovra' correspondere alla classe MyClass o una sottoclasse di essa
+```
+
+Un tipo generico puo' avere piu' di un vincolo. In questo caso, i constraint dovranno essere separati tra di loro con una virgola.
+I constraint che possono essere specificati sono i seguenti:
+
+* where T: struct    // significa che l'argomento T deve essere un value type
+```
+class GenClass<T> where T: struct
+```
+
+* where T: class    // significa che l'argomento T deve essere un reference type
+```
+class GenClass<T> where T: class
+```
+
+* where T: new()    // significa che l'argomento T deve necessariamente possedere un costruttore pubblico e senza parametri (costruttore di default)
+                    // dovrebbe essere l'ultimo constraint nel caso ci fossero altri
+```
+class GenClass<T> where T: new()
+```
+
+* where T: nome della classe base    // significa che l'argomento T deve essere una classe base o una sua sottoclasse
+```
+class GenClass<T> where T: MyClass
+```
+
+* where T: U    // significa che l'argomento T deve corrispondere all'argomento fornito per U, oppure deve derivare dal tipo U
+```
+class GenClass<T,U> where T: U
+```
