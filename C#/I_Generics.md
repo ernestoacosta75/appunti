@@ -227,28 +227,140 @@ class GenClass<T> where T: MyClass   // Questo tipo T dovra' correspondere alla 
 Un tipo generico puo' avere piu' di un vincolo. In questo caso, i constraint dovranno essere separati tra di loro con una virgola.
 I constraint che possono essere specificati sono i seguenti:
 
-* where T: struct    // significa che l'argomento T deve essere un value type
+* where T: **struct**    // significa che l'argomento T deve essere un value type
 ```
 class GenClass<T> where T: struct
 ```
 
-* where T: class    // significa che l'argomento T deve essere un reference type
+* where T: **class**    // significa che l'argomento T deve essere un reference type
 ```
 class GenClass<T> where T: class
 ```
 
-* where T: new()    // significa che l'argomento T deve necessariamente possedere un costruttore pubblico e senza parametri (costruttore di default)
-                    // dovrebbe essere l'ultimo constraint nel caso ci fossero altri
+* where T: **new()**    // significa che l'argomento T deve necessariamente possedere un costruttore pubblico e
+                        // senza parametri (costruttore di default)
+                        // dovrebbe essere l'ultimo constraint nel caso ci fossero altri
 ```
 class GenClass<T> where T: new()
 ```
 
-* where T: nome della classe base    // significa che l'argomento T deve essere una classe base o una sua sottoclasse
+* where T: **nome della classe base**    // significa che l'argomento T deve essere una classe base o una sua
+                                         // sottoclasse
 ```
 class GenClass<T> where T: MyClass
 ```
 
-* where T: U    // significa che l'argomento T deve corrispondere all'argomento fornito per U, oppure deve derivare dal tipo U
+* where T: **U**    // significa che l'argomento T deve corrispondere all'argomento fornito per U, oppure deve
+                    // derivare dal tipo U
 ```
 class GenClass<T,U> where T: U
+```
+
+# Interface generiche
+
+Si possono definire delle interface che definiscono al suo interno dei metodi che contengono dei parametri di tipo.
+Questi parametri di tipo possono essere usati come parametri per i metodi definiti nelle interface, oppure come valore di ritorno da questi metodi.
+
+**UNA INTERFACE GENERICA**
+
+```
+public interface IMyInterface<T> {
+    T MyMethod(T x);
+}
+```
+
+**IMPLEMENTAZIONE DI UNA INTERFACE GENERICA**
+
+```
+public class MyClass<T> : IMyInterface<T> {
+    public T MyMethod(T x) {
+        return x;
+    }
+}
+
+...
+
+static void Main(string[] args) {
+    MyClass<string> myClass = new MyClass<string>();
+    Console.WriteLine(myClass.MyMethod("Mario"));
+}
+```
+
+Si potrebbe anche creare una classe che non è generica, specificando un tipo concreto in sostituzione del parametro di tipo che è previsto nell'interface:
+
+```
+public class MyClass<string> : IMyInterface<string> {
+    public string MyMethod(string x) {
+        return x;
+    }
+}
+
+...
+
+static void Main(string[] args) {
+    MyClass myClass = new MyClass();
+    Console.WriteLine(myClass.MyMethod("Mario"));
+}
+```
+
+# Struct generiche
+
+```
+struct MyStruct<T> where T : struct {
+    public T a;
+}
+
+...
+
+MyStruct<double> myStruct { 140.76 };
+Console.WriteLine(myStruct.a);          // 140,76
+```
+
+# Nullable types
+
+Una delle strutture generiche che ci viene messa a disposizione dal framework .NET, ci consente di introdurre all'interno dei nostri programmi, i tipi **Nullable**.
+
+Per usare un nullable type, è sufficiente aggiungere un **?** dopo la specifica del tipo della variabile:
+
+```
+bool? myBool = true;
+myBool = null;
+```
+
+Il **?** è una scorciatoia per **Nullable<T>**. Un Nullable type è un tipo che usa una struttura generica.
+La struttura Nullable ha la proprietà **HasValue**, che consente di verificare se è presente o no un valore diverso da null all'interno di una variable di un Nullable type.
+
+**LA STRUCT NULLABLE<T>**
+
+```
+Nullable<bool> myBool = true;
+myBool = null;
+
+if (myBool.HasValue) {
+    Console.WriteLine("Valore presente");
+}
+```
+
+Un'altra proprietà è **Value**, che riporta il valore che è associato alla variabile se la proprietà **HasValue** riporta un valore non null.
+
+**VALUE**
+
+```
+Nullable<bool> myBool = true;
+myBool = null;
+bool b;
+
+if (myBool.HasValue) {
+    b = myBool.Value;
+}
+```
+
+Esiste anche un operatore particolare che viene chiamato **null-coalescing operator**, che è rappresentato da **??**.
+Esso ci consente di assegnare ad una variabile il valore effettivo di un Nullable type se questo è presente, oppure di assegnare un valore di riserva.
+
+```
+Nullable<bool> myBool = true;
+myBool = null;
+
+bool b = myBool ?? false;   // false
 ```

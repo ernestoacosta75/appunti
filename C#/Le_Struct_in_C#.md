@@ -18,7 +18,7 @@ public class Person {
 1. Le Struct sono value types. Le classi sono reference types.
    Una Struct mantiene dentro di se tutti i propri valori.
 
-2. Le Struct non possono essere assegnate a **nul**.
+2. Le Struct non possono essere assegnate a **null**.
 3. Le Struct non possono definire un proprio **costruttore senza parametri**.
 4. Le Struct non supportano l'**ereditarietà**.
 
