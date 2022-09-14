@@ -165,3 +165,72 @@ static void Main (string[] args) {
     cd2(10, 4);     // False
 }
 ```
+
+# I Delegate Action e Func
+
+Per il delegate **Action** essistono diverse implementazioni predefinite e ciascuna di loro fa uso dei generics.
+
+* Tutte queste implementazioni hanno una caratteristica in comune: **hanno un valore di ritorno void**.
+* Ogni specifica implementazione ha zero o più parametri in ingresso, che sono dei Type Parameters.
+
+```
+public delegate void Action();
+
+public delegate void Action<T>(T arg);
+
+public delegate void Action<T1, T2>(T1 arg1, T2 arg2);
+
+... Fino ad un massimo di 16 type parameters.
+```
+
+**ESSEMPIO**
+
+```
+public class Program
+{
+    void MyFunc(int x, string s)
+    {
+        Console.WriteLine($"{x} and {s}");
+    }
+
+    static void Main (string[] args)
+    {
+        Program p = new Program();
+        Action<int, string> myAction = p.MyFunc;
+        myAction(10, "Mario");  // 10 and Mario
+    }
+}
+```
+
+Se invece abbiamo bisogno di un valore di ritorno, possiamo scartare il delegate **Action** e ricorrere ad un'altra famiglia di Delegate che sono sempre predefinite dal framework .NET, che è il **Func**.
+
+Il pattern del delegate **Func** è simile a quello dell'**Action**, ma ritorna un valore di tipo generico.
+
+```
+public delegate TResult Func<TResult>();
+
+public delegate TResult Func<T, TResult>(T arg);
+
+public delegate TResult Func<T1, T2, TResult>(T1 arg1, T2 arg2);
+
+... Fino ad un massimo di 16 type parameters.
+```
+
+**ESSEMPIO**
+
+```
+public class Program
+{
+    int MyFunc(int x, int y)
+    {
+        return x * y;
+    }
+
+    static void Main (string[] args)
+    {
+        Program p = new Program();
+        Func<int, int> myFunc = p.MyFunc;
+        Console.WriteLine(myFunc(10, 14));
+    }
+}
+```
