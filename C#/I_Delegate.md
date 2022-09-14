@@ -119,7 +119,7 @@ static void Main (string[] args) {
 
     // Like this, the Delegate contains the reference to three methods at the same time
     cd += p.EqualsTo;
-    
+
     // The three methods will be called in sequence
     cd(10, 4);  // True False False
 }
@@ -131,3 +131,37 @@ static void Main (string[] args) {
 * Una qualunque eccezione interrompe il multicast
 
 # I Delegate Generici
+
+```
+public delegate void ConfrontoDelegate<T>(T x, T y);
+```
+
+Si possono usare anche dei type costraint:
+
+```
+public delegate void ConfrontoDelegate<T>(T x, T y) where T : struct;
+
+...
+
+public void GreaterThan(double x, double y) {
+    bool result = (x > y) ? true : false;
+    Console.WriteLine(result);
+}
+
+public void LessThan(int x, int y) {
+    bool result = (x < y) ? true : false;
+    Console.WriteLine(result);
+}
+
+...
+
+static void Main (string[] args) {
+    Program p = new Program();
+
+    ConfrontoDelegate<double> cd1 = p.GreaterThan;
+    ConfrontoDelegate<int> cd2 = p.LessThan;
+
+    cd1(12.6, 5.8); // True
+    cd2(10, 4);     // False
+}
+```
