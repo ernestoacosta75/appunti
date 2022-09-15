@@ -72,7 +72,3 @@ A continuazione, vedremmo tutti i passi necessari per sottoscrivere l'evento def
 4. Modificare la Property "message".
 5. Pubblicare l'evento dall'**emettitore**.
 6. Ricevere l'evento nei due **listener**.
-
-```
-
-```
