@@ -46,3 +46,36 @@ Quando el passaggio è **by reference**, non viene allocata dell'ulteriore memor
 
 Il nuovo oggetto viene creato all'interno del metodo e  viene sostituito a quello iniziale. Quindi è rimasto in vita, e la variabile che era stata passata come argomento, punta a questo nuovo oggetto.
 
+# Output Parameters: il modificatore 'out' (ModificatoreOut)
+
+Gli **output parameters** sono lo strumento che C# mette a disposizione per passare all'indietro dei dati, da un metodo verso il suo chiamante.
+
+In questo modo, possiamo prevvedere degli ulteriori valori in uscita da un metodo (se questo ci serve), in aggiunta a quell'unico valore di ritorno canonico.
+
+Questo se ottiene col modificatore **out**. Esso consente ad un metodo di produrre un valore in uscita, modificando un proprio parametro, essattamente come accade nel passaggio **by reference**.
+
+L'argomento da passare ad un parametro out **deve essere una variabile**, che può anche non contenere un valore iniziale dato che questa variabile **sarà sicuramente inizzializata all'interno del metodo**.
+
+Una differenza importante del modificatore **out** è quella de che all'interno del metodo, un parametro out **deve ASSOLUTAMENTE essere assegnato ad un valore esplicito** prima di poter essere letto. Altrimenti, il compilatore ci ferma.
+
+**DICHIARAZIONE**
+
+```
+void MyMethod(out int x) {...}
+
+int y;
+MyMethod(out y);
+```
+
+# Il modificatore 'in' (versione 7.2 di C#) (ModificatoreIn)
+
+Il modificatore **in** serve a rendere dei parametri **read only**. Serve per dichiarare un modo esplicito che il valore di un parametro non sarà sicuramente modificato all'interno del suo metodo.
+
+**DICHIARAZIONE**
+
+```
+void MyMethod(in int x) {...}
+
+int y = 5;
+MyMethod(y);
+```
