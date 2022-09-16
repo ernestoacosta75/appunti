@@ -13,7 +13,7 @@ Questo significa che quando dentro il metodo viene modificato il valore di uno d
 
 Se invece, al reference passato come parametro al metodo, viene assegnata una nuova istanza del reference type, esso verrà associato ad una nuova istanza e l'ulteriore modifica degli attributi verrà assegnata a questa istanza, **e non a quella che è stata passata come parametro**.
 
-# Reference Parameters: il Modificatore 'ref'
+# Reference Parameters: il Modificatore 'ref' (ModificatoreRef)
 
 I **reference parameters** e' lo strumento che C# mette a disposizione per gestire i parametri tramite **riferimento**, non piu' tramite **valore**. Si tratta de la possibilita' di eseguire un passaggio di un argomento ad un parametro **by reference**.
 
@@ -33,3 +33,16 @@ void MyMethod(ref int x) {...}
 int y = 5;
 MyMethod(ref y);
 ```
+
+**Value Parameter - Memory Allocation nello Stack**
+
+Quando il passaggio di argomenti avviene **per valore**, viene allocata della memoria nello Stack per accogliere i valori dei rispettivi parametri, e questa memoria è separata rispetto al valore iniziale degli argomenti.
+
+**Reference Parameter - No Memory Allocation nello Stack**
+
+Quando el passaggio è **by reference**, non viene allocata dell'ulteriore memoria nello Stack perchè i parametri diventano loro stessi degli alias per i valori originali degli argomenti. Quindi, praticamente condividono la stessa memoria degli argomenti, ed è proprio per questo che ogni modifica che viene eseguita all'interno del metodo sui parametri, provoca una corrispondente modifica negli argomenti originali.
+
+**Che cosa succede se nel passaggio di un reference type per reference, andiamo a cambiare l'oggetto puntato?**
+
+Il nuovo oggetto viene creato all'interno del metodo e  viene sostituito a quello iniziale. Quindi è rimasto in vita, e la variabile che era stata passata come argomento, punta a questo nuovo oggetto.
+
