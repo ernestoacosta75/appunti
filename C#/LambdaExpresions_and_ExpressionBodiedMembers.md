@@ -38,3 +38,7 @@ class Program
 ```
 
 # Expression-bodied Members
+
+In C# si può unsare una sintassi analoga a quella delle lambda expressions anche quando ci poniamo in relazione ai membri di un tipo che possono essere implementati come espressioni.
+
+Il nome generico che viene attribuito ai membri che godono di questo privileggio è **expression-bodied members**. Cioè, membri che hanno un codice costituito da una espressione.
