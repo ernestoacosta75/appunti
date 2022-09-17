@@ -72,7 +72,7 @@ ConfrontoDelegate cd = new ConfrontoDelegate(p.GreaterThan);
 ```
 
 Essiste un modo alternativo di eseguire un Delegate.
-Oltre a usa direttamente il nome della variabile che rappresenta il Delegate fornendo i parametri tra parentisi, possiamo usare anche il metodo **invoke**, che e' presente in tutti gli oggetti Delegate, per ottenere di fatto lo stesso risultato:
+Oltre a usare direttamente il nome della variabile che rappresenta il Delegate fornendo i parametri tra parentisi, possiamo usare anche il metodo **invoke**, che e' presente in tutti gli oggetti Delegate, per ottenere di fatto lo stesso risultato:
 
 ```
 cd = p.GreatherThan;
