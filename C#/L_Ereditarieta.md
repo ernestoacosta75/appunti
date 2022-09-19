@@ -70,13 +70,14 @@ public class BClass : AClass {
 AClass aClass = new BClass();
 
 if )aClass is BClass) {
-    BClass bClass = (BClass) a;
+    BClass bClass = (BClass) aClass;
 }
 ```
 
 **LA KEYWPRDS 'AS'**
 
-Rappresenta un modo alternativo di eseguire il casting da un tipo di oggettoad un'altro.
+Rappresenta un modo alternativo di eseguire il casting da un tipo di oggetto ad un'altro.
+
 ```
 public class AClass {
     protected int aVar;
@@ -88,15 +89,19 @@ public class BClass : AClass {
 
 AClass aClass = new BClass();
 
-BClass bClass = a as BClass;
+BClass bClass = aClass as BClass;
 ```
 
 # Costruttori ed Ereditarietà
 
 **INSERIMENTO DI "BASE" NEL CONSTRUTTORE**
-Nel costruttore della classe derivata si aggiunge/aggiungono i parametri necessari per soddisfare il parametro/parametri della classe base, insieme all'utilizzo de la keyword **base** con la sintassi **: base(<base_class_parameters>)**.
+
+Nel costruttore della classe derivata si aggiunge/aggiungono i parametri necessari per soddisfare il parametro/parametri della classe base, insieme all'utilizzo de la keyword **base** con la sintassi:
+
+**: base(<base_class_parameters>)**.
 
 La keyword **base** provoca la chiamata ad uno dei costruttori della classe base.
+
 ```
 public class AClass {
     private int aVar;
