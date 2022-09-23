@@ -1,25 +1,28 @@
-# Cosa fa ASP.NET Core?
+# Un framework moderno
 
-* È un framework per il Web.
-* Si possono realizzare applicazioni di due tipi:
-  - **Web App**: Applicazioni che forniscono delle informazioni in maniera dinamica, producono HTML ed in esse ci sono dei dati ottenuti da databases o servizi esterni come Web Services.I suoi principali utenti sono le persone.
-  - **Web API**: È un'applicazioni i cui utenti sono **altre applicazioni**. Il suo scopo è quello di fornire dei dati in posseso dell'applicazione, afinchè altre possano consumarle, magari lavorarle e reinserirne delle proprie.
+ASP.NET Core è un nuovo framework realizzato da Microsoft per costruire applicazioni web moderne e sfruttare tutto il potenziale di internet per offrire i nostri servizi e prodotti digitali.
 
-* È conforme al **GDPR**: si possono archiviare i dati degli utenti in maniera cifrata e perciò, confidenziale.
-* È stremamente **modulare**: si possono scegliere i componenti da usare.
-* È **gratuito** e **multipiattaforma**.
-* È **open source**.
+Le caratteristiche pecualiari di ASP.NET Core sono:
 
-# Lo stack tecnologico x un'applicazione web sviluppata con ASP.NET Core
+* È completamente **gratuito e open-source**;
 
-* **Applicazione** (user code)
-  Si programma in **C#**, oppure in VB.NET o F#, ma questi hanno un supporto parziale.
+* È un nuovo framework ma è costruito con l'esperienza ventennale di Microsoft e **arricchito grazie al feedback e ai contributi della community**;
 
-* **ASP.NET Core** (application framework)
-  Fornisce gli oggetti e i servizi specifici per realizzare una webapp.
+* Consente facilmente di scrivere applicazioni conformi alla normative europee, come il **GDPR e la normativa sui cookie**;
 
-* **.NET Core** (software framework)
-  Contiene le librerie fondamentali, il runtime e il compilatore JIT.
+* È **cloud-ready**, cioè è costruito per rendere semplice la transizione da un server on-premise (situato in azienda) verso un servizio cloud, che può garantire migliore scalabilità e disponibilità;
 
-* **Piattaforma ospitante**
-  Il .NET Core contiene anche i binds specifici con la piattaforma ospitante. Quindi, può funzionare su Windows, MacOS e Linux (x86, x64 o ARM32).
+* La sua **modularità** lo rende un framework estremamente **snello e performante**. Siamo noi, in qualità di sviluppatori, a decidere in maniera puntuale come comporre la nostra applicazione, in modo da ottenere un valido compromesso tra prestazioni e funzionalità;
+
+* Usa degli accorgimenti che ci permettono di costruire applicazioni **sicure per default**;
+
+* Essendo **multipiattaforma**, possiamo programmare un'applicazione ASP.NET Core da Linux, macOS o Linux sfruttando un editor come Visual Studio Code.
+
+
+# Cosa possiamo fare con ASP.NET Core?
+
+ASP.NET Core permette principalmente di realizzare **due tipi di applicazioni web**:
+
+* **Web UI**: cioè siti web di consultazione e/o gestione dati che saranno accessibili da un browser. Queste comprendono le webapp altamente interattive e costruite con framework javascript come Angular e Vue.js. In questo caso gli utenti sono PERSONE;
+
+* **Web API**: cioè servizi web REST che agevolano l'integrazione con altri sistemi esterni o che sono accedute da app mobile, sviluppate da noi o da terze parti. In questo caso gli utenti sono altre APPLICAZIONI.
